@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/services/auth/require";
-import type { ProgressStatus } from "@prisma/client";
+type ProgressStatus = "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED";
 
 const createSchema = z.object({
   companyId: z.string().min(1),

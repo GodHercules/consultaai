@@ -3,14 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/services/auth/session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AndamentosGantt } from "@/components/admin/andamentos-gantt";
-import type { ProgressStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 type ProgressRow = {
   id: string;
   title: string;
-  status: ProgressStatus;
+  status: "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED";
   startDate: Date;
   endDate: Date;
   company: { id: string; razaoSocial: string | null; nomeFantasia: string | null; cnpjNumerico: string | null };
