@@ -3,15 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/services/auth/session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AndamentosGantt } from "@/components/admin/andamentos-gantt";
+import type { ProgressStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+
+type ProgressRow = {
+  id: string;
+  title: string;
+  status: ProgressStatus;
+  startDate: Date;
+  endDate: Date;
+  company: { id: string; razaoSocial: string | null; nomeFantasia: string | null; cnpjNumerico: string | null };
+  createdByUser: { id: string; name: string; email: string };
+};
 
 export default async function AndamentosGanttPage() {
   const session = await getSessionUser();
   if (!session) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/companies");
 
-  const items = await prisma.companyProgress.findMany({
+  const items = (await prisma.companyProgress.findMany({
     orderBy: [{ endDate: "desc" }],
     take: 300,
     select: {
@@ -23,7 +34,7 @@ export default async function AndamentosGanttPage() {
       company: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjNumerico: true } },
       createdByUser: { select: { id: true, name: true, email: true } },
     },
-  });
+  })) as ProgressRow[];
 
   return (
     <div className="space-y-6">
@@ -41,7 +52,7 @@ export default async function AndamentosGanttPage() {
         </CardHeader>
         <CardContent>
           <AndamentosGantt
-            items={items.map((i) => ({
+            items={items.map((i: ProgressRow) => ({
               ...i,
               startDate: i.startDate.toISOString(),
               endDate: i.endDate.toISOString(),
@@ -52,4 +63,3 @@ export default async function AndamentosGanttPage() {
     </div>
   );
 }
-
