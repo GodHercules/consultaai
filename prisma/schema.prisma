@@ -16,12 +16,33 @@ enum Role {
   USER
 }
 
+enum Department {
+  DP
+  FISCAL
+  CONTABIL
+}
+
+enum PendingCompanyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProgressStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
 model User {
   id                 String   @id @default(cuid())
   name               String
   email              String   @unique
   passwordHash       String
   role               Role     @default(USER)
+  department         Department?
+  isDepartmentLeader Boolean  @default(false)
   isActive           Boolean  @default(true)
   mustChangePassword Boolean  @default(false)
   createdAt          DateTime @default(now())
@@ -30,6 +51,8 @@ model User {
   auditLogs           AuditLog[]
   tempPassword        UserTempPassword?
   passwordResetTokens PasswordResetToken[]
+  decidedCompanies    PendingCompany[] @relation("PendingCompanyDecider")
+  progressUpdates     CompanyProgress[]
 }
 
 model Company {
@@ -49,6 +72,9 @@ model Company {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  pendingCompanies PendingCompany[]
+  progressUpdates  CompanyProgress[]
+
   @@unique([cnpjNumerico])
   @@index([cnpjNumerico])
   @@index([raizCnpj])
@@ -57,6 +83,77 @@ model Company {
   @@index([sistema])
   @@index([certificado])
   @@index([ativo])
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  source      String
+  deliveryKey String   @unique
+  signature   String?
+  timestamp   String?
+  payload     Json
+  receivedAt  DateTime @default(now())
+  processedAt DateTime?
+
+  pendingCompanies PendingCompany[]
+
+  @@index([source, receivedAt])
+}
+
+model PendingCompany {
+  id               String              @id @default(cuid())
+  source           String
+  status           PendingCompanyStatus @default(PENDING)
+  receivedAt       DateTime            @default(now())
+  decidedAt        DateTime?
+  decidedByUserId  String?
+  companyId        String?
+
+  // Snapshot dos dados recebidos (para auditoria e reprocessamento)
+  payload Json
+
+  // Campos normalizados para busca/triagem
+  codigoInterno    String?
+  razaoSocial      String?
+  nomeFantasia     String?
+  cnpj             String?
+  cnpjNumerico     String?
+  raizCnpj         String?
+  grupo            String?
+  grupoNormalizado String?
+  regimeTributario String?
+  sistema          String?
+  certificado      String?
+
+  deliveryId String?
+  delivery   WebhookDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+
+  decidedByUser User?   @relation("PendingCompanyDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  company       Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([status, receivedAt])
+  @@index([cnpjNumerico])
+  @@index([raizCnpj])
+  @@index([grupoNormalizado])
+}
+
+model CompanyProgress {
+  id        String         @id @default(cuid())
+  companyId String
+  title     String
+  status    ProgressStatus @default(TODO)
+  startDate DateTime
+  endDate   DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdByUserId String
+  createdByUser   User @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, startDate])
+  @@index([createdByUserId, createdAt])
 }
 
 model AuditLog {

@@ -23,7 +23,7 @@ export async function searchCompanies(params: CompanySearchParams) {
   const grupoNorm = params.grupo ? normalizeText(params.grupo) : null;
   const cnpjDigits = params.cnpj ? onlyDigits(params.cnpj) : null;
 
-  const where: Parameters<typeof prisma.company.findMany>[0]["where"] = {
+  const where: NonNullable<Parameters<typeof prisma.company.findMany>[0]>["where"] = {
     ...(params.ativo === null || params.ativo === undefined ? {} : { ativo: params.ativo }),
     ...(params.codigoInterno ? { codigoInterno: { contains: params.codigoInterno.trim(), mode: "insensitive" } } : {}),
     ...(params.sistema ? { sistema: { contains: params.sistema.trim(), mode: "insensitive" } } : {}),
@@ -79,4 +79,3 @@ export async function searchCompanies(params: CompanySearchParams) {
 
   return { total, page, pageSize, items };
 }
-

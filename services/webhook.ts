@@ -1,4 +1,4 @@
-import { env } from "@/lib/env";
+import { getEnv } from "@/lib/env";
 
 export type WebhookEvent =
   | "USER_CREATED"
@@ -12,6 +12,7 @@ export async function sendWebhookEvent(input: {
   name: string;
   temporaryPassword?: string;
 }) {
+  const env = getEnv();
   if (!env.N8N_WEBHOOK_URL) return;
 
   const controller = new AbortController();
@@ -35,4 +36,3 @@ export async function sendWebhookEvent(input: {
     clearTimeout(timeout);
   }
 }
-

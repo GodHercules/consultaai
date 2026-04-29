@@ -8,7 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export function ProfileForm(props: { initialName: string; email: string }) {
+export function ProfileForm(props: {
+  initialName: string;
+  email: string;
+  department: string | null;
+  departmentLeader: { name: string; email: string } | null;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(props.initialName);
@@ -47,6 +52,21 @@ export function ProfileForm(props: { initialName: string; email: string }) {
             <Input value={props.email} disabled />
           </div>
           <div className="space-y-2">
+            <Label>Setor</Label>
+            <Input value={props.department ?? "-"} disabled />
+          </div>
+          <div className="space-y-2">
+            <Label>Líder do setor</Label>
+            <Input
+              value={
+                props.departmentLeader
+                  ? `${props.departmentLeader.name} (${props.departmentLeader.email})`
+                  : "-"
+              }
+              disabled
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
@@ -60,4 +80,3 @@ export function ProfileForm(props: { initialName: string; email: string }) {
     </Card>
   );
 }
-

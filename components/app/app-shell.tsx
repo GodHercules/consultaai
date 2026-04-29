@@ -24,13 +24,13 @@ export async function AppShell(props: { children: ReactNode }) {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-[240px_1fr]">
         <aside className="hidden md:block">
           <div className="rounded-lg border bg-card p-3">
-            <SideNav role={session.user.role} />
+            <SideNav role={session.user.role} department={session.user.department ?? null} />
           </div>
         </aside>
         <main className="min-w-0">
           <div className="md:hidden">
             <div className="rounded-lg border bg-card p-3">
-              <SideNav role={session.user.role} />
+              <SideNav role={session.user.role} department={session.user.department ?? null} />
             </div>
             <Separator className="my-6" />
           </div>
@@ -40,4 +40,3 @@ export async function AppShell(props: { children: ReactNode }) {
     </div>
   );
 }
-

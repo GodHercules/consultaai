@@ -15,7 +15,7 @@ export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
     orderBy: [{ role: "asc" }, { createdAt: "desc" }],
     take: 50,
-    select: { id: true, name: true, email: true, role: true, isActive: true, mustChangePassword: true },
+    select: { id: true, name: true, email: true, role: true, department: true, isDepartmentLeader: true, isActive: true, mustChangePassword: true },
   });
 
   return (
@@ -41,6 +41,8 @@ export default async function AdminUsersPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{u.role}</Badge>
+                {u.department ? <Badge variant="outline">{u.department}</Badge> : null}
+                {u.isDepartmentLeader ? <Badge variant="secondary">líder</Badge> : null}
                 <Badge variant={u.isActive ? "secondary" : "outline"}>
                   {u.isActive ? "Ativo" : "Inativo"}
                 </Badge>
@@ -54,4 +56,3 @@ export default async function AdminUsersPage() {
     </div>
   );
 }
-

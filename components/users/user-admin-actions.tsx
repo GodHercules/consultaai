@@ -18,6 +18,8 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"ADMIN" | "USER">("USER");
+  const [department, setDepartment] = useState<"" | "DP" | "FISCAL" | "CONTABIL">("");
+  const [isDepartmentLeader, setIsDepartmentLeader] = useState(false);
 
   async function createUser() {
     setLoading(true);
@@ -25,7 +27,13 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, email, role }),
+        body: JSON.stringify({
+          name,
+          email,
+          role,
+          department: department || null,
+          isDepartmentLeader,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -126,6 +134,41 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
                 <SelectItem value="ADMIN">ADMIN</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Setor</Label>
+            <Select
+              value={department}
+              onValueChange={(v) =>
+                setDepartment(v === "DP" || v === "FISCAL" || v === "CONTABIL" ? v : "")
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="(opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">(Nenhum)</SelectItem>
+                <SelectItem value="DP">DP</SelectItem>
+                <SelectItem value="FISCAL">FISCAL</SelectItem>
+                <SelectItem value="CONTABIL">CONTÁBIL</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Líder do setor</div>
+              <div className="text-xs text-muted-foreground">
+                Apenas para usuários ADMIN com setor definido.
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={isDepartmentLeader}
+              disabled={role !== "ADMIN" || !department}
+              onChange={(e) => setIsDepartmentLeader(e.target.checked)}
+              aria-label="Líder do setor"
+            />
           </div>
         </div>
 

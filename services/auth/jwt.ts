@@ -1,10 +1,12 @@
 import { SignJWT, jwtVerify } from "jose";
-import { env } from "@/lib/env";
 import type { SessionPayload } from "@/types/auth";
+import { getEnv } from "@/lib/env";
 
 const COOKIE_NAME = "cc_session";
 
 function secretKey() {
+  const env = getEnv();
+  if (!env.AUTH_JWT_SECRET) throw new Error("AUTH_JWT_SECRET_MISSING");
   return new TextEncoder().encode(env.AUTH_JWT_SECRET);
 }
 
@@ -43,4 +45,3 @@ export async function verifySession(token: string) {
     mustChangePassword,
   } satisfies SessionPayload;
 }
-

@@ -9,6 +9,7 @@ function isPublicPath(pathname: string) {
     pathname === "/forgot-password" ||
     pathname.startsWith("/reset-password") ||
     pathname === "/api/health" ||
+    pathname === "/api/webhooks/fundarmf" ||
     pathname === "/api/auth/login" ||
     pathname === "/api/auth/forgot-password" ||
     pathname === "/api/auth/reset-password"

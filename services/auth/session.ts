@@ -3,7 +3,7 @@ import { getSessionCookie } from "@/services/auth/cookies";
 import { verifySession } from "@/services/auth/jwt";
 
 export async function getSessionUser() {
-  const token = getSessionCookie();
+  const token = await getSessionCookie();
   if (!token) return null;
 
   try {
@@ -15,6 +15,8 @@ export async function getSessionUser() {
         name: true,
         email: true,
         role: true,
+        department: true,
+        isDepartmentLeader: true,
         isActive: true,
         mustChangePassword: true,
       },
@@ -25,4 +27,3 @@ export async function getSessionUser() {
     return null;
   }
 }
-

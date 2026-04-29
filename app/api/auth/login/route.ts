@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     role: user.role,
     mustChangePassword: user.mustChangePassword,
   });
-  setSessionCookie(token);
+  await setSessionCookie(token);
 
   await prisma.auditLog.create({
     data: {
@@ -90,4 +90,3 @@ export async function POST(request: Request) {
     mustChangePassword: user.mustChangePassword,
   });
 }
-

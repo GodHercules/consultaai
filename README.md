@@ -6,13 +6,14 @@ Sistema corporativo para substituir planilhas descentralizadas por uma fonte ún
 
 - Next.js (App Router) + React Server Components
 - TypeScript + TailwindCSS + shadcn/ui
-- Prisma ORM + PostgreSQL (Supabase ou Neon)
-- Deploy: Vercel (app) + Supabase/Neon (DB)
+- Prisma ORM + PostgreSQL (Supabase/Neon/Prisma Postgres)
+- Deploy: Vercel (app) + Supabase/Neon/Prisma Postgres (DB)
 
 ## Funcionalidades
 
 - Autenticação: JWT em cookie `httpOnly` + `bcryptjs`
 - Roles: `ADMIN` e `USER` (middleware por rota)
+- Setores (usuários): `DP`, `FISCAL`, `CONTABIL` + líder do setor (exibido no Perfil)
 - Senha temporária: validade 24h + troca obrigatória no 1º login
 - Reset de senha: token (2h) + limite 1 vez/dia + envio via webhook n8n
 - Webhook n8n via `N8N_WEBHOOK_URL` com eventos:
@@ -20,8 +21,9 @@ Sistema corporativo para substituir planilhas descentralizadas por uma fonte ún
   - `PASSWORD_TEMP`
   - `PASSWORD_RESET_REQUEST`
   - `PASSWORD_RESET_SUCCESS`
-- Auditoria: login, importação, alterações e resets
 - Empresas: consulta, detalhe, cadastro/edição (ADMIN), inativar/reativar (ADMIN)
+- Webhook FundarMF: recebimento seguro de empresas em fila pendente (ADMIN cadastra/aprova)
+- Andamentos (Contábil): envio por empresa + visão consolidada (ADMIN) tipo timeline/Gantt (MVP)
 - Importação Excel: `xlsx`, detecção automática de colunas, normalização, dedupe, upsert e relatório
 
 ## Setup local
@@ -35,9 +37,10 @@ npm i
 2) Configure env:
 
 - Copie `.env.example` para `.env`
-- Preencha `DATABASE_URL` (Supabase/Neon)
+- Preencha `DATABASE_URL`
 - Gere `AUTH_JWT_SECRET` (>= 32 chars)
 - (Opcional) `N8N_WEBHOOK_URL`
+- (Opcional) `FUNDARMF_WEBHOOK_SECRET` (para receber empresas via webhook)
 
 3) Rode migrations + seed:
 
@@ -46,10 +49,10 @@ npm run db:migrate
 npx prisma db seed
 ```
 
-O seed cria um `ADMIN` automaticamente. Você pode controlar o seed via:
+O seed cria até 3 `ADMIN` por padrão. Você pode controlar via:
 
-- `ADMIN_EMAIL` (default: `admin@local`)
-- `ADMIN_NAME` (default: `Administrador`)
+- `ADMIN_EMAILS` (default: `admin1@local,admin2@local,admin3@local`)
+- `ADMIN_NAMES` (default: `Administrador 1,Administrador 2,Administrador 3`)
 
 4) Suba o servidor:
 
@@ -58,6 +61,26 @@ npm run dev
 ```
 
 Abra `http://localhost:3000`.
+
+## Webhook FundarMF (seguro)
+
+Endpoint:
+
+- `POST /api/webhooks/fundarmf`
+
+Headers obrigatórios:
+
+- `x-fundarmf-timestamp`: epoch ms (ex.: `1714416000000`)
+- `x-fundarmf-signature`: `v1=<hex>`
+
+Assinatura:
+
+- message: `${timestamp}.${rawBody}`
+- HMAC-SHA256 com `FUNDARMF_WEBHOOK_SECRET`
+
+Após receber, o sistema cria um registro em `PendingCompany` (status `PENDING`). Admins fazem o cadastro em:
+
+- `/admin/pending-companies`
 
 ## Fluxo de reset de senha (n8n)
 
@@ -81,7 +104,8 @@ No n8n, envie este token ao usuário (por e-mail). Para finalizar, o usuário us
   - `DATABASE_URL`
   - `AUTH_JWT_SECRET`
   - `N8N_WEBHOOK_URL` (opcional)
-  - `ADMIN_EMAIL` / `ADMIN_NAME` (opcional)
+  - `FUNDARMF_WEBHOOK_SECRET` (opcional)
+  - `ADMIN_EMAILS` / `ADMIN_NAMES` (opcional)
 - Rode `prisma migrate deploy` (ex.: pipeline/build step) e execute seed 1 vez.
 
 ## Estrutura de pastas

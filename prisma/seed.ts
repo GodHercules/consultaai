@@ -33,13 +33,10 @@ async function postWebhook(payload: Record<string, unknown>) {
   }
 }
 
-async function main() {
-  const email = (process.env.ADMIN_EMAIL ?? "admin@local").toLowerCase().trim();
-  const name = process.env.ADMIN_NAME ?? "Administrador";
-
-  const existing = await prisma.user.findUnique({ where: { email } });
+async function createAdminUser(input: { email: string; name: string }) {
+  const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
-    console.log(`[seed] ADMIN já existe: ${email}`);
+    console.log(`[seed] ADMIN já existe: ${input.email}`);
     return;
   }
 
@@ -48,8 +45,8 @@ async function main() {
 
   const user = await prisma.user.create({
     data: {
-      name,
-      email,
+      name: input.name,
+      email: input.email,
       passwordHash,
       role: Role.ADMIN,
       isActive: true,
@@ -85,11 +82,44 @@ async function main() {
     timestamp: nowIso(),
   });
 
-  console.log(`[seed] ADMIN criado: ${email}`);
+  console.log(`[seed] ADMIN criado: ${input.email}`);
   console.log(`[seed] Senha temporária (válida 24h): ${temporaryPassword}`);
-  console.log(
-    `[seed] Dica: defina N8N_WEBHOOK_URL para enviar automaticamente por webhook.`,
-  );
+}
+
+async function main() {
+  const emailsRaw =
+    process.env.ADMIN_EMAILS ??
+    process.env.ADMIN_EMAIL ??
+    "admin1@local,admin2@local,admin3@local";
+  const namesRaw =
+    process.env.ADMIN_NAMES ??
+    process.env.ADMIN_NAME ??
+    "Administrador 1,Administrador 2,Administrador 3";
+
+  const emails = emailsRaw
+    .split(",")
+    .map((v) => v.toLowerCase().trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const names = namesRaw
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+  if (!emails.length) {
+    console.log("[seed] Nenhum ADMIN_EMAILS encontrado.");
+    return;
+  }
+
+  for (let i = 0; i < emails.length; i++) {
+    await createAdminUser({
+      email: emails[i],
+      name: names[i] ?? `Administrador ${i + 1}`,
+    });
+  }
+
+  console.log("[seed] Dica: defina N8N_WEBHOOK_URL para enviar automaticamente por webhook.");
 }
 
 main()

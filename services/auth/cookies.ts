@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { sessionCookieName } from "@/services/auth/jwt";
 
-export function setSessionCookie(token: string) {
-  cookies().set(sessionCookieName(), token, {
+export async function setSessionCookie(token: string) {
+  (await cookies()).set(sessionCookieName(), token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -11,8 +11,8 @@ export function setSessionCookie(token: string) {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().set(sessionCookieName(), "", {
+export async function clearSessionCookie() {
+  (await cookies()).set(sessionCookieName(), "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -21,7 +21,6 @@ export function clearSessionCookie() {
   });
 }
 
-export function getSessionCookie() {
-  return cookies().get(sessionCookieName())?.value ?? null;
+export async function getSessionCookie() {
+  return (await cookies()).get(sessionCookieName())?.value ?? null;
 }
-

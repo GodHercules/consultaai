@@ -16,6 +16,8 @@ export async function listUsers(params: { page: number; pageSize: number }) {
         name: true,
         email: true,
         role: true,
+        department: true,
+        isDepartmentLeader: true,
         isActive: true,
         mustChangePassword: true,
         createdAt: true,
@@ -26,4 +28,3 @@ export async function listUsers(params: { page: number; pageSize: number }) {
 
   return { total, page, pageSize, items };
 }
-

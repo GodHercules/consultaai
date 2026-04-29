@@ -10,6 +10,8 @@ const createSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   role: z.enum(["ADMIN", "USER"]),
+  department: z.enum(["DP", "FISCAL", "CONTABIL"]).nullable().optional(),
+  isDepartmentLeader: z.boolean().optional(),
 });
 
 export async function GET(request: Request) {
@@ -34,13 +36,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
 
-  const result = await createUserWithTemporaryPassword({
-    actorUserId: auth.session.user.id,
-    name: parsed.data.name,
-    email: parsed.data.email,
-    role: parsed.data.role,
-  });
+  try {
+    const result = await createUserWithTemporaryPassword({
+      actorUserId: auth.session.user.id,
+      name: parsed.data.name,
+      email: parsed.data.email,
+      role: parsed.data.role,
+      department: parsed.data.department ?? null,
+      isDepartmentLeader: parsed.data.isDepartmentLeader ?? false,
+    });
 
-  return Response.json({ user: result.user });
+    return Response.json({ user: result.user });
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : "ERROR" }, { status: 400 });
+  }
 }
-

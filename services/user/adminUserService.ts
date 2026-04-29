@@ -9,9 +9,17 @@ export async function createUserWithTemporaryPassword(input: {
   name: string;
   email: string;
   role: "ADMIN" | "USER";
+  department?: "DP" | "FISCAL" | "CONTABIL" | null;
+  isDepartmentLeader?: boolean;
 }) {
   const email = input.email.toLowerCase().trim();
   const name = input.name.trim();
+  const department = input.department ?? null;
+  const isDepartmentLeader = input.isDepartmentLeader ?? false;
+
+  if (isDepartmentLeader && (input.role !== "ADMIN" || !department)) {
+    throw new Error("INVALID_DEPARTMENT_LEADER");
+  }
 
   const temporaryPassword = randomToken(12);
   const passwordHash = await hashPassword(temporaryPassword);
@@ -23,6 +31,8 @@ export async function createUserWithTemporaryPassword(input: {
       email,
       passwordHash,
       role: input.role,
+      department,
+      isDepartmentLeader,
       isActive: true,
       mustChangePassword: true,
       tempPassword: { create: { expiresAt } },
@@ -89,4 +99,3 @@ export async function resetTemporaryPassword(input: {
 
   return { temporaryPassword };
 }
-

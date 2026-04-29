@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const pageSize = Math.min(50, Math.max(1, Number(url.searchParams.get("pageSize") ?? "20")));
   const skip = (page - 1) * pageSize;
 
-  const where: Parameters<typeof prisma.auditLog.findMany>[0]["where"] = {
+  const where: NonNullable<Parameters<typeof prisma.auditLog.findMany>[0]>["where"] = {
     ...(url.searchParams.get("entity") ? { entity: url.searchParams.get("entity")! } : {}),
     ...(url.searchParams.get("action") ? { action: url.searchParams.get("action")! } : {}),
     ...(url.searchParams.get("userId") ? { userId: url.searchParams.get("userId")! } : {}),
@@ -41,4 +41,3 @@ export async function GET(request: Request) {
 
   return Response.json({ total, page, pageSize, items });
 }
-

@@ -65,8 +65,7 @@ export async function POST(request: Request) {
     role: user.role,
     mustChangePassword: false,
   });
-  setSessionCookie(newToken);
+  await setSessionCookie(newToken);
 
   return Response.json({ ok: true });
 }
-
