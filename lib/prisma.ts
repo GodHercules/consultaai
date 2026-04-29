@@ -4,10 +4,16 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function prismaClientOptions() {
   const url = process.env.DATABASE_URL;
+  const accelerateUrl = process.env.PRISMA_ACCELERATE_URL ?? undefined;
   const isPrismaPostgres = Boolean(url && url.startsWith("prisma+postgres://"));
+  const isPrismaAccelerate = Boolean(url && url.startsWith("prisma://"));
 
   return {
-    ...(isPrismaPostgres ? { accelerateUrl: url } : {}),
+    ...((accelerateUrl
+      ? { accelerateUrl }
+      : isPrismaPostgres || isPrismaAccelerate
+        ? { accelerateUrl: url }
+        : {}) as Record<string, unknown>),
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "warn", "error"]
