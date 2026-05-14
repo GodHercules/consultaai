@@ -125,7 +125,7 @@ async function upsertDefaultTestAdmin() {
   }
 
   const email = (
-    process.env.DEFAULT_TEST_ADMIN_EMAIL ?? "teste.admin@local"
+    process.env.DEFAULT_TEST_ADMIN_EMAIL ?? "teste.admin@local.com"
   ).toLowerCase().trim();
   const name = (process.env.DEFAULT_TEST_ADMIN_NAME ?? "Administrador de Teste").trim();
   const plainPassword = process.env.DEFAULT_TEST_ADMIN_PASSWORD ?? "Teste@123456";
@@ -167,7 +167,7 @@ async function main() {
   const emailsRaw =
     process.env.ADMIN_EMAILS ??
     process.env.ADMIN_EMAIL ??
-    "admin1@local,admin2@local,admin3@local";
+    "admin1@local.com,admin2@local.com,admin3@local.com";
   const namesRaw =
     process.env.ADMIN_NAMES ??
     process.env.ADMIN_NAME ??

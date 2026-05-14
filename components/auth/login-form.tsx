@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,8 +31,10 @@ export function LoginForm() {
         toast.error("Falha no login", {
           description:
             data?.error === "TEMP_PASSWORD_EXPIRED"
-              ? "Senha temporária expirada. Use 'Esqueci minha senha'."
-              : "Verifique seu e-mail e senha.",
+              ? "Senha temporaria expirada. Use 'Esqueci minha senha'."
+              : data?.error === "INVALID_INPUT"
+                ? "E-mail invalido. Use um formato como nome@dominio.com."
+                : "Verifique seu e-mail e senha.",
         });
         return;
       }
@@ -97,4 +99,3 @@ export function LoginForm() {
     </Card>
   );
 }
-
