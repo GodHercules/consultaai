@@ -13,16 +13,26 @@ function prismaClientOptions() {
     throw new Error("DATABASE_URL is required to run the seed.");
   }
 
-  return accelerateUrl
-    ? { accelerateUrl }
-    : isPrismaPostgres || isPrismaAccelerate
-      ? { accelerateUrl: url }
-      : isPostgresDirect
-        ? { adapter: new PrismaPg({ connectionString: url }) }
-        : {};
+  if (accelerateUrl) {
+    return { accelerateUrl } as ConstructorParameters<typeof PrismaClient>[0];
+  }
+
+  if (isPrismaPostgres || isPrismaAccelerate) {
+    return { accelerateUrl: url } as ConstructorParameters<typeof PrismaClient>[0];
+  }
+
+  if (isPostgresDirect) {
+    return {
+      adapter: new PrismaPg({ connectionString: url }),
+    } as ConstructorParameters<typeof PrismaClient>[0];
+  }
+
+  return {} as ConstructorParameters<typeof PrismaClient>[0];
 }
 
-const prisma = new PrismaClient(prismaClientOptions());
+const prisma = new PrismaClient({
+  ...prismaClientOptions(),
+});
 
 function nowIso() {
   return new Date().toISOString();
