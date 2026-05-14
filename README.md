@@ -54,6 +54,13 @@ O seed cria até 3 `ADMIN` por padrão. Você pode controlar via:
 - `ADMIN_EMAILS` (default: `admin1@local,admin2@local,admin3@local`)
 - `ADMIN_NAMES` (default: `Administrador 1,Administrador 2,Administrador 3`)
 
+Além disso, o seed garante 1 admin fixo para testes (sempre criado/atualizado):
+
+- `DEFAULT_TEST_ADMIN_EMAIL` (default: `teste.admin@local`)
+- `DEFAULT_TEST_ADMIN_PASSWORD` (default: `Teste@123456`)
+- `DEFAULT_TEST_ADMIN_NAME` (default: `Administrador de Teste`)
+- `ENABLE_DEFAULT_TEST_ADMIN` (default: `true`)
+
 4) Suba o servidor:
 
 ```bash
@@ -124,4 +131,3 @@ No n8n, envie este token ao usuário (por e-mail). Para finalizar, o usuário us
 - Use paginação e limites (aplicado nos endpoints e listagens principais)
 - Evite queries pesadas e `include` profundos
 - Índices em `cnpjNumerico`, `raizCnpj`, `grupoNormalizado`
-

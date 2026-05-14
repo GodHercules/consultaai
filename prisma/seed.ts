@@ -1,7 +1,28 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { PrismaClient, Role } from "@prisma/client";
 
-const prisma = new PrismaClient();
+function prismaClientOptions() {
+  const url = process.env.DATABASE_URL;
+  const accelerateUrl = process.env.PRISMA_ACCELERATE_URL ?? undefined;
+  const isPostgresDirect = Boolean(url && (url.startsWith("postgresql://") || url.startsWith("postgres://")));
+  const isPrismaPostgres = Boolean(url && url.startsWith("prisma+postgres://"));
+  const isPrismaAccelerate = Boolean(url && url.startsWith("prisma://"));
+
+  if (!url) {
+    throw new Error("DATABASE_URL is required to run the seed.");
+  }
+
+  return accelerateUrl
+    ? { accelerateUrl }
+    : isPrismaPostgres || isPrismaAccelerate
+      ? { accelerateUrl: url }
+      : isPostgresDirect
+        ? { adapter: new PrismaPg({ connectionString: url }) }
+        : {};
+}
+
+const prisma = new PrismaClient(prismaClientOptions());
 
 function nowIso() {
   return new Date().toISOString();
@@ -86,7 +107,53 @@ async function createAdminUser(input: { email: string; name: string }) {
   console.log(`[seed] Senha temporária (válida 24h): ${temporaryPassword}`);
 }
 
+async function upsertDefaultTestAdmin() {
+  const enabled = (process.env.ENABLE_DEFAULT_TEST_ADMIN ?? "true").toLowerCase() !== "false";
+  if (!enabled) {
+    console.log("[seed] Admin padrão de teste desativado (ENABLE_DEFAULT_TEST_ADMIN=false).");
+    return;
+  }
+
+  const email = (
+    process.env.DEFAULT_TEST_ADMIN_EMAIL ?? "teste.admin@local"
+  ).toLowerCase().trim();
+  const name = (process.env.DEFAULT_TEST_ADMIN_NAME ?? "Administrador de Teste").trim();
+  const plainPassword = process.env.DEFAULT_TEST_ADMIN_PASSWORD ?? "Teste@123456";
+
+  if (!email || !plainPassword) {
+    console.log("[seed] DEFAULT_TEST_ADMIN_EMAIL/DEFAULT_TEST_ADMIN_PASSWORD inválidos.");
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(plainPassword, 12);
+
+  const user = await prisma.user.upsert({
+    where: { email },
+    create: {
+      name,
+      email,
+      passwordHash,
+      role: Role.ADMIN,
+      isActive: true,
+      mustChangePassword: false,
+    },
+    update: {
+      name,
+      passwordHash,
+      role: Role.ADMIN,
+      isActive: true,
+      mustChangePassword: false,
+    },
+  });
+
+  await prisma.userTempPassword.deleteMany({ where: { userId: user.id } });
+
+  console.log(`[seed] Admin padrão de teste pronto: ${email}`);
+}
+
 async function main() {
+  await upsertDefaultTestAdmin();
+
   const emailsRaw =
     process.env.ADMIN_EMAILS ??
     process.env.ADMIN_EMAIL ??
@@ -130,4 +197,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
