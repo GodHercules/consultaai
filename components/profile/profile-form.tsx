@@ -43,7 +43,7 @@ export function ProfileForm(props: {
     <Card>
       <CardHeader>
         <CardTitle>Perfil</CardTitle>
-        <CardDescription>Atualize seus dados básicos.</CardDescription>
+        <CardDescription>Atualize seus dados básicos com uma leitura mais clara da sua conta.</CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
@@ -72,7 +72,7 @@ export function ProfileForm(props: {
           </div>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
             {loading ? "Salvando..." : "Salvar"}
           </Button>
         </CardFooter>

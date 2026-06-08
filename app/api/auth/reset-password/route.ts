@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
 
-  const err = validateNewPassword(parsed.data.newPassword);
+  const err = validateNewPassword(parsed.data.newPassword, "strong");
   if (err) return Response.json({ error: "WEAK_PASSWORD", message: err }, { status: 400 });
 
   const tokenHash = await sha256Base64Url(parsed.data.token);
@@ -68,4 +68,3 @@ export async function POST(request: Request) {
 
   return Response.json({ ok: true });
 }
-

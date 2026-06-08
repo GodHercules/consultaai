@@ -20,7 +20,7 @@ export async function GET() {
     prisma.importHistory.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
-      select: { id: true, fileName: true, total: true, created: true, updated: true, ignored: true, createdAt: true },
+      select: { id: true, fileName: true, total: true, created: true, updated: true, ignored: true, suspectedDuplicates: true, status: true, createdAt: true },
     }),
   ]);
 
@@ -31,4 +31,3 @@ export async function GET() {
     lastImports,
   });
 }
-

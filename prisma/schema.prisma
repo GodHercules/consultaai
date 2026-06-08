@@ -28,11 +28,31 @@ enum PendingCompanyStatus {
   REJECTED
 }
 
+enum CompanyIdentityKind {
+  CNPJ
+  NAME_REGIME
+  CODE
+}
+
+enum ImportHistoryStatus {
+  DONE
+  FAILED
+}
+
 enum ProgressStatus {
   TODO
   IN_PROGRESS
   DONE
   BLOCKED
+}
+
+enum IntegrationEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  REVIEW_REQUIRED
+  FAILED
+  DUPLICATE
 }
 
 model User {
@@ -56,33 +76,108 @@ model User {
 }
 
 model Company {
-  id               String   @id @default(cuid())
-  codigoInterno    String?
-  razaoSocial      String?
-  nomeFantasia     String?
-  cnpj             String?
-  cnpjNumerico     String?
-  raizCnpj         String?
-  grupo            String?
-  grupoNormalizado String?
-  regimeTributario String?
-  sistema          String?
-  certificado      String?
-  ativo            Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                    String             @id @default(cuid())
+  qtd                   Int?
+  codigoInterno         String?
+  codigoInternoNormalizado String?          @unique
+  razaoSocial           String?
+  razaoSocialNormalizada String?
+  nomeFantasia          String?
+  observacao            String?
+  cnpj                  String?
+  cnpjNumerico          String?
+  raizCnpj              String?
+  dataAbertura          DateTime?
+  statusCadastral       String?
+  telefoneContato       String?
+  telefoneContatoNumerico String?
+    whatsappContato       String?
+    whatsappContatoNumerico String?
+    emailContato          String?
+    emailContatoAlternativo String?
+    ehGrupo               Boolean?
+    grupo                 String?
+    grupoNormalizado      String?
+    regimeTributario      String?
+    regimeNormalizado     String?
+    sistema               String?
+    certificado           String?
+    anexo                 String?
+    das                   String?
+    municipio             String?
+    cep                   String?
+    logradouro            String?
+    numero                String?
+    complemento           String?
+    bairro                String?
+    cidade                String?
+    uf                    String?
+    cnaePrincipal         String?
+    cnaesSecundarios      Json?
+    contractStartedAt     DateTime?
+    contractEndedAt       DateTime?
+    contractPredictedEndedAt DateTime?
+    externalOrigin        String?
+    fundarmfCaseId        String?
+    importedAt            DateTime?
+    lastSyncedAt          DateTime?
+    syncStatus            String?
+  importWarning         String?
+  identityKind          CompanyIdentityKind?
+  ativo                 Boolean            @default(true)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   pendingCompanies PendingCompany[]
   progressUpdates  CompanyProgress[]
+  partners         CompanyPartner[]
 
   @@unique([cnpjNumerico])
+  @@unique([fundarmfCaseId])
+  @@unique([razaoSocialNormalizada, regimeNormalizado])
   @@index([cnpjNumerico])
+  @@index([codigoInternoNormalizado])
   @@index([raizCnpj])
+  @@index([telefoneContatoNumerico])
+  @@index([whatsappContatoNumerico])
+  @@index([emailContato])
+  @@index([emailContatoAlternativo])
   @@index([grupoNormalizado])
   @@index([codigoInterno])
   @@index([sistema])
   @@index([certificado])
-  @@index([ativo])
+  @@index([razaoSocialNormalizada])
+    @@index([regimeNormalizado])
+    @@index([ativo])
+    @@index([contractStartedAt])
+    @@index([contractEndedAt])
+    @@index([contractPredictedEndedAt])
+  }
+
+model CompanyPartner {
+  id                  String   @id @default(cuid())
+  companyId           String
+  nome                String
+  nomeNormalizado     String
+  cpf                 String?
+  cpfNormalizado      String?
+  email               String?
+  emailNormalizado    String?
+  telefone            String?
+  telefoneNormalizado  String?
+  participacao        Int?
+  cargo               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, nomeNormalizado])
+  @@index([companyId])
+  @@index([nomeNormalizado])
+  @@index([cpfNormalizado])
+  @@index([emailNormalizado])
+  @@index([telefoneNormalizado])
 }
 
 model WebhookDelivery {
@@ -98,6 +193,27 @@ model WebhookDelivery {
   pendingCompanies PendingCompany[]
 
   @@index([source, receivedAt])
+}
+
+model IntegrationEvent {
+  id              String                @id @default(cuid())
+  source          String
+  eventType       String
+  deliveryId      String
+  fundarmfCaseId  String?
+  companyCnpj     String?
+  status          IntegrationEventStatus @default(RECEIVED)
+  payload         Json
+  errorMessage    String?
+  processedAt     DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([source, deliveryId])
+  @@index([source, eventType, createdAt])
+  @@index([fundarmfCaseId])
+  @@index([companyCnpj])
+  @@index([status, createdAt])
 }
 
 model PendingCompany {
@@ -175,14 +291,18 @@ model AuditLog {
 }
 
 model ImportHistory {
-  id        String   @id @default(cuid())
-  fileName  String
-  total     Int
-  created   Int
-  updated   Int
-  ignored   Int
-  errors    Json?
-  createdAt DateTime @default(now())
+  id                  String   @id @default(cuid())
+  fileName            String
+  fileHash            String?  @unique
+  status              ImportHistoryStatus @default(DONE)
+  total               Int
+  created             Int
+  updated             Int
+  ignored             Int
+  suspectedDuplicates Int      @default(0)
+  errors              Json?
+  report              Json?
+  createdAt           DateTime @default(now())
 
   @@index([createdAt])
 }
@@ -212,4 +332,11 @@ model PasswordResetToken {
   @@index([userId, createdAt])
   @@index([tokenHash])
   @@index([expiresAt])
+}
+
+model RateLimitBucket {
+  bucketKey String   @id
+  count     Int
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
 }

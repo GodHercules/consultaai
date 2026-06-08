@@ -26,7 +26,10 @@ export async function GET(request: Request) {
         created: true,
         updated: true,
         ignored: true,
+        suspectedDuplicates: true,
         errors: true,
+        report: true,
+        status: true,
         createdAt: true,
       },
     }),
@@ -34,4 +37,3 @@ export async function GET(request: Request) {
 
   return Response.json({ total, page, pageSize, items });
 }
-

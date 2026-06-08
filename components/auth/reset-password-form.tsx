@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import { getPasswordStrength } from "@/lib/password-strength";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState(tokenFromUrl);
   const [newPassword, setNewPassword] = useState("");
+  const strength = getPasswordStrength(newPassword);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +52,7 @@ export function ResetPasswordForm() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="token">Token</Label>
             <Input
@@ -69,15 +72,16 @@ export function ResetPasswordForm() {
               required
             />
             <p className="text-xs text-muted-foreground">
-              Mínimo 10 caracteres, com maiúscula, minúscula, número e especial.
+              A nova senha precisa ser forte para concluir a redefinição.
             </p>
           </div>
+          <PasswordStrengthMeter password={newPassword} minimumStrength="strong" />
         </CardContent>
-        <CardFooter className="flex gap-2">
-          <Button type="submit" disabled={loading}>
+        <CardFooter className="flex flex-col gap-2 sm:flex-row">
+          <Button type="submit" disabled={loading || strength.level !== "strong" || !token.trim()} className="w-full sm:w-auto">
             {loading ? "Salvando..." : "Redefinir"}
           </Button>
-          <Button type="button" variant="ghost" onClick={() => router.push("/login")}>
+          <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => router.push("/login")}>
             Voltar
           </Button>
         </CardFooter>
@@ -85,4 +89,3 @@ export function ResetPasswordForm() {
     </Card>
   );
 }
-

@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import { getPasswordStrength } from "@/lib/password-strength";
 
 export function ForcePasswordChangeForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const strength = getPasswordStrength(newPassword);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,7 +42,7 @@ export function ForcePasswordChangeForm() {
   }
 
   return (
-    <Card className="max-w-xl">
+    <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardTitle>Troca de senha obrigatória</CardTitle>
         <CardDescription>
@@ -47,7 +50,7 @@ export function ForcePasswordChangeForm() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="currentPassword">Senha atual</Label>
             <Input
@@ -68,12 +71,14 @@ export function ForcePasswordChangeForm() {
               required
             />
             <p className="text-xs text-muted-foreground">
-              Mínimo 10 caracteres, com maiúscula, minúscula, número e especial.
+              A senha precisa ser forte para continuar: pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.
             </p>
           </div>
+
+          <PasswordStrengthMeter password={newPassword} minimumStrength="strong" />
         </CardContent>
-        <CardFooter>
-          <Button type="submit" disabled={loading}>
+        <CardFooter className="justify-end">
+          <Button type="submit" disabled={loading || strength.level !== "strong"} className="w-full sm:w-auto">
             {loading ? "Salvando..." : "Salvar nova senha"}
           </Button>
         </CardFooter>
@@ -81,4 +86,3 @@ export function ForcePasswordChangeForm() {
     </Card>
   );
 }
-

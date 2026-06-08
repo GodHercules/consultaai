@@ -44,16 +44,18 @@ export function CompanyStatusForm(props: { companyId: string; ativo: boolean }) 
       </CardHeader>
       <CardContent className="space-y-2">
         <Textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo (obrigatório)" />
+        <p className="text-xs leading-5 text-muted-foreground">
+          Descreva o contexto com clareza para facilitar auditoria e reativação futura.
+        </p>
       </CardContent>
-      <CardFooter className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => router.back()}>
+      <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => router.back()}>
           Cancelar
         </Button>
-        <Button onClick={submit} disabled={loading || motivo.trim().length < 3}>
+        <Button onClick={submit} disabled={loading || motivo.trim().length < 3} className="w-full sm:w-auto">
           {loading ? "Salvando..." : nextAtivo ? "Reativar" : "Inativar"}
         </Button>
       </CardFooter>
     </Card>
   );
 }
-

@@ -49,11 +49,11 @@ export function ForgotPasswordForm() {
       <CardHeader>
         <CardTitle>Esqueci minha senha</CardTitle>
         <CardDescription>
-          Enviaremos um token via webhook n8n (e-mail corporativo).
+          Enviaremos um token via webhook n8n para o e-mail corporativo cadastrado.
         </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-4">
           <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
@@ -62,12 +62,15 @@ export function ForgotPasswordForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+          <p className="text-xs leading-5 text-muted-foreground">
+            Se o endereço existir, o envio é processado em poucos instantes.
+          </p>
         </CardContent>
-        <CardFooter className="flex gap-2">
-          <Button type="submit" disabled={loading}>
+        <CardFooter className="flex flex-col gap-2 sm:flex-row">
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
             {loading ? "Enviando..." : "Enviar"}
           </Button>
-          <Button type="button" variant="ghost" onClick={() => router.push("/login")}>
+          <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => router.push("/login")}>
             Voltar
           </Button>
         </CardFooter>
@@ -75,4 +78,3 @@ export function ForgotPasswordForm() {
     </Card>
   );
 }
-

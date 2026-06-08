@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import { getPasswordStrength } from "@/lib/password-strength";
 
 export function ChangePasswordForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const strength = getPasswordStrength(newPassword);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +43,7 @@ export function ChangePasswordForm() {
     <Card>
       <CardHeader>
         <CardTitle>Alterar senha</CardTitle>
-        <CardDescription>Recomendamos usar um gerenciador de senhas.</CardDescription>
+        <CardDescription>Recomendamos usar um gerenciador de senhas para manter sua conta segura.</CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
@@ -51,10 +54,14 @@ export function ChangePasswordForm() {
           <div className="space-y-2">
             <Label htmlFor="newPassword">Nova senha</Label>
             <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+            <p className="text-xs text-muted-foreground">
+              Use uma senha forte: pelo menos 12 caracteres com letras maiúsculas, minúsculas, números e símbolos.
+            </p>
           </div>
+          <PasswordStrengthMeter password={newPassword} minimumStrength="strong" />
         </CardContent>
         <CardFooter className="justify-end">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || strength.level !== "strong"} className="w-full sm:w-auto">
             {loading ? "Salvando..." : "Salvar"}
           </Button>
         </CardFooter>
@@ -62,4 +69,3 @@ export function ChangePasswordForm() {
     </Card>
   );
 }
-

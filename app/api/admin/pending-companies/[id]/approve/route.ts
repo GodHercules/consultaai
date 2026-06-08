@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 import { auditLog } from "@/services/audit";
+import { isUniqueConstraintError } from "@/services/db/errors";
 import { requireAuth } from "@/services/auth/require";
 import { normalizeCompany } from "@/services/company/normalize";
 
@@ -49,14 +50,41 @@ export async function POST(
     ativo: true,
   });
 
-  const company = await prisma.company.upsert({
-    where: normalized.cnpjNumerico ? { cnpjNumerico: normalized.cnpjNumerico } : { id: "__never__" },
-    create: normalized,
-    update: normalized,
-  }).catch(async () => {
-    // Se não houver CNPJ válido (cnpjNumerico null), cria sempre.
-    return prisma.company.create({ data: normalized });
-  });
+  const hasIdentity = Boolean(
+    normalized.cnpjNumerico || normalized.razaoSocialNormalizada || normalized.codigoInternoNormalizado,
+  );
+
+  if (!hasIdentity) {
+    return Response.json({ error: "IDENTITY_REQUIRED" }, { status: 400 });
+  }
+
+  const companyWhere = normalized.cnpjNumerico
+    ? { cnpjNumerico: normalized.cnpjNumerico }
+    : normalized.razaoSocialNormalizada && normalized.regimeNormalizado
+      ? {
+          razaoSocialNormalizada: normalized.razaoSocialNormalizada,
+          regimeNormalizado: normalized.regimeNormalizado,
+        }
+      : normalized.codigoInternoNormalizado
+        ? { codigoInternoNormalizado: normalized.codigoInternoNormalizado }
+        : null;
+
+  let company = companyWhere ? await prisma.company.findFirst({ where: companyWhere }) : null;
+
+  if (!company) {
+    try {
+      company = await prisma.company.create({ data: normalized });
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      company = companyWhere ? await prisma.company.findFirst({ where: companyWhere }) : null;
+      if (!company) {
+        throw error;
+      }
+    }
+  }
 
   await prisma.pendingCompany.update({
     where: { id: pending.id },

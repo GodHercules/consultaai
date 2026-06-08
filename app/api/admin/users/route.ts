@@ -46,7 +46,10 @@ export async function POST(request: Request) {
       isDepartmentLeader: parsed.data.isDepartmentLeader ?? false,
     });
 
-    return Response.json({ user: result.user });
+    return Response.json({
+      user: result.user,
+      temporaryPassword: result.temporaryPassword,
+    });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "ERROR" }, { status: 400 });
   }

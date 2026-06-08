@@ -32,10 +32,14 @@ function prismaClientOptions() {
   } satisfies ConstructorParameters<typeof PrismaClient>[0];
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+export function createPrismaClient() {
+  return new PrismaClient({
     ...prismaClientOptions(),
   });
+}
+
+export const prisma =
+  globalForPrisma.prisma ??
+  createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

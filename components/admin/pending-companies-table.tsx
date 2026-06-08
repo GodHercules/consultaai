@@ -68,7 +68,7 @@ export function PendingCompaniesTable(props: { initialItems: PendingCompanyListI
         items.map((c) => (
           <div
             key={c.id}
-            className="flex flex-col gap-2 rounded-md border p-3 text-sm md:flex-row md:items-center md:justify-between"
+            className="flex flex-col gap-3 rounded-[1.25rem] border border-border/70 bg-background/55 p-4 text-sm md:flex-row md:items-center md:justify-between"
           >
             <div className="min-w-0">
               <div className="truncate font-medium">
@@ -77,13 +77,13 @@ export function PendingCompaniesTable(props: { initialItems: PendingCompanyListI
               <div className="truncate text-muted-foreground">
                 {c.cnpjNumerico || "-"} • {c.codigoInterno || "-"} • {c.grupo || "-"} • {c.sistema || "-"}
               </div>
-              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline">{c.source}</Badge>
                 <span>{new Date(c.receivedAt).toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant={c.status === "PENDING" ? "secondary" : "outline"}>{c.status}</Badge>
               <Button
                 size="sm"
@@ -112,4 +112,3 @@ export function PendingCompaniesTable(props: { initialItems: PendingCompanyListI
     </div>
   );
 }
-

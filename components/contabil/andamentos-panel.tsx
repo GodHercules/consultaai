@@ -132,7 +132,11 @@ export function AndamentosPanel(props: { companies: CompanyOption[]; initialItem
           </div>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button disabled={loading || !companyId || title.trim().length < 2} onClick={create}>
+          <Button
+            disabled={loading || !companyId || title.trim().length < 2}
+            onClick={create}
+            className="w-full sm:w-auto"
+          >
             {loading ? "Enviando..." : "Enviar"}
           </Button>
         </CardFooter>
@@ -143,10 +147,10 @@ export function AndamentosPanel(props: { companies: CompanyOption[]; initialItem
           <CardTitle>Meus últimos andamentos</CardTitle>
           <CardDescription>Até 50 registros.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-3">
           {items.length ? (
             items.map((i) => (
-              <div key={i.id} className="rounded-md border p-3 text-sm">
+              <div key={i.id} className="rounded-[1.25rem] border border-border/70 bg-background/55 p-4 text-sm">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0">
                     <div className="truncate font-medium">{i.title}</div>

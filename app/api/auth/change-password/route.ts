@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/services/auth/session";
-import { signSession } from "@/services/auth/jwt";
+import { passwordChecksumFromHash, signSession } from "@/services/auth/jwt";
 import { setSessionCookie } from "@/services/auth/cookies";
 import {
   hashPassword,
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const ok = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
   if (!ok) return Response.json({ error: "INVALID_CREDENTIALS" }, { status: 401 });
 
-  const err = validateNewPassword(parsed.data.newPassword);
+  const err = validateNewPassword(parsed.data.newPassword, "strong");
   if (err) return Response.json({ error: "WEAK_PASSWORD", message: err }, { status: 400 });
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
@@ -60,10 +60,12 @@ export async function POST(request: Request) {
     }),
   ]);
 
+  const passwordChecksum = await passwordChecksumFromHash(passwordHash);
   const newToken = await signSession({
     sub: user.id,
     role: user.role,
     mustChangePassword: false,
+    passwordChecksum,
   });
   await setSessionCookie(newToken);
 

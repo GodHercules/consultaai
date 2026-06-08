@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: true }, { status: 200 });
   }
 
-  const limiter = rateLimit({
+  const limiter = await rateLimit({
     key: `forgot:${ip}:${parsed.data.email}`,
     limit: 5,
     windowMs: 10 * 60 * 1000,
@@ -79,4 +79,3 @@ export async function POST(request: Request) {
 
   return Response.json({ ok: true }, { status: 200 });
 }
-

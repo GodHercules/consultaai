@@ -88,8 +88,8 @@ export function AndamentosGantt(props: { items: Item[] }) {
         {prepared.companies.map((group) => {
           const name = group.company.razaoSocial || group.company.nomeFantasia || "(sem nome)";
           return (
-            <div key={group.company.id} className="rounded-md border">
-              <div className="flex flex-col gap-2 p-3 md:flex-row md:items-center md:justify-between">
+            <div key={group.company.id} className="rounded-[1.25rem] border border-border/70 bg-background/55 shadow-sm">
+              <div className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{name}</div>
                   <div className="truncate text-xs text-muted-foreground">{group.company.cnpjNumerico || "-"}</div>
@@ -97,7 +97,7 @@ export function AndamentosGantt(props: { items: Item[] }) {
                 <div className="text-xs text-muted-foreground">{group.rows.length} item(ns)</div>
               </div>
 
-              <div className="relative h-12 border-t bg-muted/20">
+              <div className="relative h-14 border-t border-border/70 bg-muted/20">
                 {group.rows.map((r) => {
                   const left = ((r.start.getTime() - prepared.rangeStart.getTime()) / prepared.rangeMs) * 100;
                   const right = ((r.end.getTime() - prepared.rangeStart.getTime()) / prepared.rangeMs) * 100;
@@ -106,7 +106,7 @@ export function AndamentosGantt(props: { items: Item[] }) {
                     <div
                       key={r.id}
                       title={`${r.title} • ${r.status} • ${r.createdByUser.name}`}
-                      className={`absolute top-3 h-6 rounded ${statusColor(r.status)} text-[11px] text-white`}
+                      className={`absolute top-4 h-6 rounded-xl ${statusColor(r.status)} text-[11px] text-white shadow-sm`}
                       style={{ left: `${left}%`, width: `${width}%` }}
                     >
                       <div className="truncate px-2 leading-6">{r.title}</div>

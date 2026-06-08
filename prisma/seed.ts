@@ -125,7 +125,7 @@ async function upsertDefaultTestAdmin() {
   }
 
   const email = (
-    process.env.DEFAULT_TEST_ADMIN_EMAIL ?? "teste.admin@local.com"
+    process.env.DEFAULT_TEST_ADMIN_EMAIL ?? "test.admin@local.com"
   ).toLowerCase().trim();
   const name = (process.env.DEFAULT_TEST_ADMIN_NAME ?? "Administrador de Teste").trim();
   const plainPassword = process.env.DEFAULT_TEST_ADMIN_PASSWORD ?? "Teste@123456";

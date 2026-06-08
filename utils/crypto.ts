@@ -10,3 +10,11 @@ export async function sha256Base64Url(input: string) {
   return Buffer.from(new Uint8Array(digest)).toString("base64url");
 }
 
+export async function sha256Base64UrlBytes(input: ArrayBuffer | Buffer) {
+  const data =
+    input instanceof ArrayBuffer
+      ? input
+      : input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength);
+  const digest = await crypto.subtle.digest("SHA-256", data as ArrayBuffer);
+  return Buffer.from(new Uint8Array(digest)).toString("base64url");
+}
