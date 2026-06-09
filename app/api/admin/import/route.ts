@@ -99,8 +99,8 @@ export async function POST(request: Request) {
         correlationId,
       };
 
-      await prisma.importHistory
-        .create({
+      try {
+        await prisma.importHistory.create({
           data: {
             fileName,
             fileHash: null,
@@ -116,8 +116,10 @@ export async function POST(request: Request) {
               error: failureError,
             },
           },
-        })
-        .catch(() => undefined);
+        });
+      } catch {
+        // Se o banco estiver indisponível, não deixamos o log de falha derrubar a resposta.
+      }
     }
 
     return jsonImportError(

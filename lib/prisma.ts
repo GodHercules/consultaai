@@ -4,14 +4,14 @@ import { PrismaClient } from "@prisma/client";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function prismaClientOptions() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
   const accelerateUrl = process.env.PRISMA_ACCELERATE_URL ?? undefined;
   const isPostgresDirect = Boolean(url && (url.startsWith("postgresql://") || url.startsWith("postgres://")));
   const isPrismaPostgres = Boolean(url && url.startsWith("prisma+postgres://"));
   const isPrismaAccelerate = Boolean(url && url.startsWith("prisma://"));
 
   if (!url) {
-    throw new Error("DATABASE_URL is required to initialize PrismaClient.");
+    throw new Error("DATABASE_URL or DIRECT_URL is required to initialize PrismaClient.");
   }
 
   const connection =
