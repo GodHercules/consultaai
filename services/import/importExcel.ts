@@ -1321,25 +1321,6 @@ async function importCompaniesInTransaction(
   return importHistory;
 }
 
-async function runWithRetry<T>(handler: () => Promise<T>, attempts = 3): Promise<T> {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      return await handler();
-    } catch (error) {
-      lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
-      const retryable = /P2002|P2034|Transaction failed due to a write conflict|deadlock|serialization/i.test(message);
-      if (!retryable || attempt === attempts) {
-        throw error;
-      }
-    }
-  }
-
-  throw lastError;
-}
-
 function toArrayBuffer(buffer: ArrayBuffer | Buffer) {
   if (buffer instanceof ArrayBuffer) return buffer;
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
@@ -1371,14 +1352,7 @@ async function importCompaniesFromExcelWithMode(
       return importCompaniesInTransaction(input.db, emptyHistoryInput, options);
     }
 
-    return runWithRetry(() =>
-      prisma.$transaction(
-        async (tx) => importCompaniesInTransaction(tx, emptyHistoryInput, options),
-        {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        },
-      ),
-    );
+    return importCompaniesInTransaction(prisma, emptyHistoryInput, options);
   }
 
   if (input.db) {
@@ -1395,24 +1369,16 @@ async function importCompaniesFromExcelWithMode(
     );
   }
 
-  return runWithRetry(() =>
-    prisma.$transaction(
-      async (tx) =>
-        importCompaniesInTransaction(
-          tx,
-          {
-            actorUserId: input.actorUserId,
-            fileName: input.fileName,
-            workbook,
-            sheetNames,
-            fileHash: input.fileHash,
-          },
-          options,
-        ),
-      {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      },
-    ),
+  return importCompaniesInTransaction(
+    prisma,
+    {
+      actorUserId: input.actorUserId,
+      fileName: input.fileName,
+      workbook,
+      sheetNames,
+      fileHash: input.fileHash,
+    },
+    options,
   );
 }
 

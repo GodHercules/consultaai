@@ -85,6 +85,16 @@ export function classifyImportFailure(error: unknown, stage: ImportStage = "unkn
       };
     }
 
+    if (prismaCode === "P2028") {
+      return {
+        code: "IMPORT_FAILED",
+        status: 500,
+        message: "A importação excedeu o tempo permitido pela transação do banco.",
+        hint: stageHint(stage),
+        details: { prismaCode, source: "prisma" },
+      };
+    }
+
     if (["P2002", "P2003", "P2025", "P2034"].includes(prismaCode)) {
       return {
         code: "IMPORT_FAILED",
