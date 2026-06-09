@@ -13,6 +13,8 @@ function messageForError(error?: string | null) {
       return "E-mail inválido. Use um formato como nome@dominio.com.";
     case "RATE_LIMITED":
       return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+    case "SERVICE_UNAVAILABLE":
+      return "O acesso está indisponível no momento. Tente novamente em instantes.";
     case "INVALID_CREDENTIALS":
     default:
       return "Verifique seu e-mail e senha.";

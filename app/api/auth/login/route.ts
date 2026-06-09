@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { z } from "zod";
+import type { Role } from "@prisma/client";
 import { createPrismaClient, prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { setSessionCookie } from "@/services/auth/cookies";
@@ -20,6 +21,16 @@ const schema = z.object({
   email: z.string().email().transform((v) => v.toLowerCase().trim()),
   password: z.string().min(1),
 });
+
+type LoginUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  passwordHash: string;
+};
 
 function isTransientConnectionError(error: unknown) {
   const message = error instanceof Error ? `${error.message} ${error.name}` : String(error);
@@ -117,20 +128,54 @@ export async function POST(request: Request) {
     return authError("RATE_LIMITED", 429);
   }
 
-  const user = await withFreshPrisma((db) =>
-    db.user.findUnique({
-      where: { email: loginEmail },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        mustChangePassword: true,
-        passwordHash: true,
-      },
-    })
-  );
+  if (defaultEnabled && isTestAdminEmail(parsed.data.email) && parsed.data.password === defaultPassword) {
+    const token = await signSession({
+      sub: TEST_ADMIN_CANONICAL_EMAIL,
+      role: "ADMIN",
+      mustChangePassword: false,
+      passwordChecksum: "bootstrap-default-admin",
+      email: loginEmail,
+      name: defaultName,
+      bootstrap: true,
+    });
+    await setSessionCookie(token);
+
+    if (redirectMode) {
+      const destination = next && next !== "/" ? next : "/dashboard";
+      return redirectTo(destination);
+    }
+
+    return Response.json({
+      user: { id: TEST_ADMIN_CANONICAL_EMAIL, name: defaultName, email: loginEmail, role: "ADMIN" },
+      mustChangePassword: false,
+    });
+  }
+
+  let user: LoginUser | null = null;
+  let lookupError: unknown = null;
+  try {
+    user = await withFreshPrisma((db) =>
+      db.user.findUnique({
+        where: { email: loginEmail },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          isActive: true,
+          mustChangePassword: true,
+          passwordHash: true,
+        },
+      })
+    );
+  } catch (error) {
+    lookupError = error;
+  }
+
+  if (lookupError) {
+    console.error("Login user lookup failed", lookupError);
+    return authError("SERVICE_UNAVAILABLE", 503);
+  }
 
   const genericError = authError("INVALID_CREDENTIALS", 401);
 
@@ -193,29 +238,6 @@ export async function POST(request: Request) {
     return Response.json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
       mustChangePassword: user.mustChangePassword,
-    });
-  }
-
-  if (defaultEnabled && isTestAdminEmail(parsed.data.email) && parsed.data.password === defaultPassword) {
-    const token = await signSession({
-      sub: TEST_ADMIN_CANONICAL_EMAIL,
-      role: "ADMIN",
-      mustChangePassword: false,
-      passwordChecksum: "bootstrap-default-admin",
-      email: loginEmail,
-      name: defaultName,
-      bootstrap: true,
-    });
-    await setSessionCookie(token);
-
-    if (redirectMode) {
-      const destination = next && next !== "/" ? next : "/dashboard";
-      return redirectTo(destination);
-    }
-
-    return Response.json({
-      user: { id: TEST_ADMIN_CANONICAL_EMAIL, name: defaultName, email: loginEmail, role: "ADMIN" },
-      mustChangePassword: false,
     });
   }
 
