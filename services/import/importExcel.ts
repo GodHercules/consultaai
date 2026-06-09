@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import type { ImportHistory as PrismaImportHistory } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { auditLog } from "@/services/audit";
+import { extractUniqueConstraintTarget, isUniqueConstraintError } from "@/services/db/errors";
 import { normalizeCnpj, isValidCnpj, cnpjRaiz } from "@/utils/cnpj";
 import { isValidEmailAddress, normalizeEmailAddress, normalizePhoneDigits, normalizePhoneDisplay } from "@/utils/contact";
 import { normalizeKeyText, normalizeText } from "@/utils/strings";
@@ -180,8 +181,6 @@ const AUXILIARY_MARKERS = [
   "descricao",
   "descricao geral",
 ];
-const INACTIVE_MARKERS = ["baixada", "baixado", "inativa", "inativo"];
-const MEI_INACTIVE_MARKERS = ["desenquadrou", "desenquadrado", "desenquadramento", "desenquadra"];
 const STATUS_MARKERS = ["ativo", "ativa", "inativo", "inativa", "baixada", "baixado", "desenquadrou"];
 const MAX_ISSUES = 300;
 const MAX_DUPLICATE_GROUPS = 200;
@@ -440,13 +439,6 @@ function isAuxiliaryLine(row: ParsedRow) {
   if (isGroupLine(row)) return false;
   if (!row.rawText) return true;
   return hasAnyToken(row.rawText, AUXILIARY_MARKERS) && !hasCompanyIdentity(row);
-}
-
-function getInactiveReason(row: ParsedRow) {
-  if (row.ativo === false) return "Status da linha indica inatividade.";
-  if (hasAnyToken(row.rawText, INACTIVE_MARKERS)) return "Linha marcada como baixada/inativa.";
-  if (hasAnyToken(row.rawText, ["mei"]) && hasAnyToken(row.rawText, MEI_INACTIVE_MARKERS)) return "MEI desenquadrado.";
-  return null;
 }
 
 function parseCompanyFields(
@@ -764,6 +756,111 @@ async function findExistingCompany(db: Prisma.TransactionClient | typeof prisma,
   });
 }
 
+async function findExistingCompanyByIdentity(
+  db: Prisma.TransactionClient | typeof prisma,
+  data: CompanyRecord,
+  uniqueTargets: string[] = [],
+) {
+  const targets = uniqueTargets.length
+    ? uniqueTargets
+    : ["cnpjNumerico", "codigoInternoNormalizado", "razaoSocialNormalizada", "regimeNormalizado"];
+
+  const candidates = new Map<string, Awaited<ReturnType<typeof findExistingCompany>>>();
+
+  const addCandidate = async (company: Awaited<ReturnType<typeof findExistingCompany>> | null) => {
+    if (!company) return;
+    candidates.set(company.id, company);
+  };
+
+  if (targets.includes("cnpjNumerico") && data.cnpjNumerico) {
+    await addCandidate(await findExistingCompany(db, data.cnpjNumerico));
+  }
+
+  if (targets.includes("codigoInternoNormalizado") && data.codigoInternoNormalizado) {
+    await addCandidate(
+      await db.company.findFirst({
+        where: { codigoInternoNormalizado: data.codigoInternoNormalizado },
+        select: {
+          id: true,
+          qtd: true,
+          codigoInterno: true,
+          codigoInternoNormalizado: true,
+          razaoSocial: true,
+          razaoSocialNormalizada: true,
+          nomeFantasia: true,
+          observacao: true,
+          cnpj: true,
+          cnpjNumerico: true,
+          raizCnpj: true,
+          ehGrupo: true,
+          grupo: true,
+          grupoNormalizado: true,
+          regimeTributario: true,
+          regimeNormalizado: true,
+          sistema: true,
+          certificado: true,
+          anexo: true,
+          das: true,
+          municipio: true,
+          telefoneContato: true,
+          telefoneContatoNumerico: true,
+          emailContato: true,
+          identityKind: true,
+          ativo: true,
+        },
+      }),
+    );
+  }
+
+  if (
+    targets.includes("razaoSocialNormalizada") &&
+    targets.includes("regimeNormalizado") &&
+    data.razaoSocialNormalizada &&
+    data.regimeNormalizado
+  ) {
+    await addCandidate(
+      await db.company.findFirst({
+        where: {
+          razaoSocialNormalizada: data.razaoSocialNormalizada,
+          regimeNormalizado: data.regimeNormalizado,
+        },
+        select: {
+          id: true,
+          qtd: true,
+          codigoInterno: true,
+          codigoInternoNormalizado: true,
+          razaoSocial: true,
+          razaoSocialNormalizada: true,
+          nomeFantasia: true,
+          observacao: true,
+          cnpj: true,
+          cnpjNumerico: true,
+          raizCnpj: true,
+          ehGrupo: true,
+          grupo: true,
+          grupoNormalizado: true,
+          regimeTributario: true,
+          regimeNormalizado: true,
+          sistema: true,
+          certificado: true,
+          anexo: true,
+          das: true,
+          municipio: true,
+          telefoneContato: true,
+          telefoneContatoNumerico: true,
+          emailContato: true,
+          identityKind: true,
+          ativo: true,
+        },
+      }),
+    );
+  }
+
+  const uniqueCandidates = [...candidates.values()];
+  if (uniqueCandidates.length === 1) return uniqueCandidates[0];
+  return null;
+}
+
 async function findExistingPartner(
   db: Prisma.TransactionClient | typeof prisma,
   companyId: string,
@@ -779,6 +876,38 @@ async function findExistingPartner(
       telefoneNormalizado: true,
     },
   });
+}
+
+function stripConflictingCompanyFields(data: CompanyUpdateData, targets: string[]) {
+  const safeData: CompanyUpdateData = { ...data };
+
+  if (targets.includes("cnpjNumerico")) {
+    delete safeData.cnpj;
+    delete safeData.cnpjNumerico;
+  }
+
+  if (targets.includes("codigoInternoNormalizado")) {
+    delete safeData.codigoInterno;
+    delete safeData.codigoInternoNormalizado;
+  }
+
+  if (targets.includes("razaoSocialNormalizada")) {
+    delete safeData.razaoSocial;
+    delete safeData.razaoSocialNormalizada;
+  }
+
+  if (targets.includes("regimeNormalizado")) {
+    delete safeData.regimeTributario;
+    delete safeData.regimeNormalizado;
+  }
+
+  return safeData;
+}
+
+function buildUniqueConflictMessage(targets: string[], rowNumber: number | null) {
+  const readableTargets = targets.length ? targets.join(", ") : "chave única";
+  const rowSuffix = rowNumber ? ` na linha ${rowNumber}` : "";
+  return `Conflito de unicidade${rowSuffix}: ${readableTargets}.`;
 }
 
 async function importCompaniesInTransaction(
@@ -947,28 +1076,61 @@ async function importCompaniesInTransaction(
   const processItem = async (item: StagedCompany) => {
     if (!item.createData.cnpjNumerico) return;
 
-    const existing = await findExistingCompany(db, item.createData.cnpjNumerico);
+    let existing = await findExistingCompanyByIdentity(db, item.createData);
 
-    if (!existing) {
-      if (!dryRun) {
+    if (!existing && !dryRun) {
+      try {
         const createdCompany = await db.company.create({
           data: toCompanyCreateData(item.createData),
           select: { id: true },
         });
 
         for (const partner of item.partners) {
-          await db.companyPartner.create({
-            data: {
-              companyId: createdCompany.id,
-              nome: partner.name,
-              nomeNormalizado: partner.nameNormalizada,
-              telefone: partner.telefone,
-              telefoneNormalizado: partner.telefoneNormalizado,
-            },
-          });
+          try {
+            await db.companyPartner.create({
+              data: {
+                companyId: createdCompany.id,
+                nome: partner.name,
+                nomeNormalizado: partner.nameNormalizada,
+                telefone: partner.telefone,
+                telefoneNormalizado: partner.telefoneNormalizado,
+              },
+            });
+          } catch (error) {
+            if (!isUniqueConstraintError(error)) throw error;
+          }
         }
-      }
 
+        created += 1;
+        partnersCreated += item.partners.length;
+        return;
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) throw error;
+
+        const targets = extractUniqueConstraintTarget(error);
+        const resolvedExisting = await findExistingCompanyByIdentity(db, item.createData, targets);
+        if (!resolvedExisting) {
+          issues.push({
+            sheet: item.sheetNames[0] ?? "unknown",
+            row: item.rowNumbers[0] ?? 0,
+            severity: "warning",
+            message: buildUniqueConflictMessage(targets, item.rowNumbers[0] ?? null),
+          });
+          ignoredUnchanged += 1;
+          return;
+        }
+
+        existing = resolvedExisting;
+        issues.push({
+          sheet: item.sheetNames[0] ?? "unknown",
+          row: item.rowNumbers[0] ?? 0,
+          severity: "warning",
+          message: `Conflito de unicidade resolvido usando o registro existente ${resolvedExisting.cnpjNumerico ?? resolvedExisting.codigoInterno ?? resolvedExisting.razaoSocial ?? resolvedExisting.id}.`,
+        });
+      }
+    }
+
+    if (!existing) {
       created += 1;
       partnersCreated += item.partners.length;
       return;
@@ -996,15 +1158,19 @@ async function importCompaniesInTransaction(
         partnersCreated += 1;
         partnerChanged = true;
         if (!dryRun) {
-          await db.companyPartner.create({
-            data: {
-              companyId: existing.id,
-              nome: partner.name,
-              nomeNormalizado: partner.nameNormalizada,
-              telefone: partner.telefone,
-              telefoneNormalizado: partner.telefoneNormalizado,
-            },
-          });
+          try {
+            await db.companyPartner.create({
+              data: {
+                companyId: existing.id,
+                nome: partner.name,
+                nomeNormalizado: partner.nameNormalizada,
+                telefone: partner.telefone,
+                telefoneNormalizado: partner.telefoneNormalizado,
+              },
+            });
+          } catch (error) {
+            if (!isUniqueConstraintError(error)) throw error;
+          }
         }
         continue;
       }
@@ -1019,13 +1185,19 @@ async function importCompaniesInTransaction(
         partnersUpdated += 1;
         partnerChanged = true;
         if (!dryRun) {
-          await db.companyPartner.update({
-            where: { id: partnerExisting.id },
-            data: partnerUpdatePayload,
-          });
+          try {
+            await db.companyPartner.update({
+              where: { id: partnerExisting.id },
+              data: partnerUpdatePayload,
+            });
+          } catch (error) {
+            if (!isUniqueConstraintError(error)) throw error;
+          }
         }
       }
     }
+
+    const safeUpdatePayload = updatePayload;
 
     if (!companyNeedsUpdate && !contactChanged && !partnerChanged) {
       ignoredUnchanged += 1;
@@ -1033,10 +1205,39 @@ async function importCompaniesInTransaction(
     }
 
     if (!dryRun && companyNeedsUpdate) {
-      await db.company.update({
-        where: { id: existing.id },
-        data: updatePayload,
-      });
+      try {
+        await db.company.update({
+          where: { id: existing.id },
+          data: safeUpdatePayload,
+        });
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) throw error;
+
+        const targets = extractUniqueConstraintTarget(error);
+        const retryPayload = stripConflictingCompanyFields(safeUpdatePayload, targets);
+        if (Object.keys(retryPayload).length === 0) {
+          issues.push({
+            sheet: item.sheetNames[0] ?? "unknown",
+            row: item.rowNumbers[0] ?? 0,
+            severity: "warning",
+            message: buildUniqueConflictMessage(targets, item.rowNumbers[0] ?? null),
+          });
+          ignoredUnchanged += 1;
+          return;
+        }
+
+        await db.company.update({
+          where: { id: existing.id },
+          data: retryPayload,
+        });
+
+        issues.push({
+          sheet: item.sheetNames[0] ?? "unknown",
+          row: item.rowNumbers[0] ?? 0,
+          severity: "warning",
+          message: `Alguns campos únicos foram preservados ao atualizar o registro ${existing.cnpjNumerico ?? existing.codigoInterno ?? existing.razaoSocial ?? existing.id}.`,
+        });
+      }
     }
 
     if (companyNeedsUpdate || contactChanged || partnerChanged) {
