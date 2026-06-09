@@ -52,38 +52,65 @@ function isImportErrorPayload(value: unknown): value is ImportErrorPayload {
   );
 }
 
+const stageLabels: Record<string, string> = {
+  request: "recepção da requisição",
+  form: "leitura do formulário",
+  file: "validação do arquivo",
+  hash: "leitura do arquivo",
+  history_lookup: "consulta de duplicidade",
+  preview: "pré-visualização",
+  process: "processamento e gravação",
+  failure_log: "registro da falha",
+  unknown: "etapa interna",
+};
+
 function errorMessage(error?: string | ImportErrorPayload | null) {
   const code = isImportErrorPayload(error) ? error.code : error;
   const message = isImportErrorPayload(error) ? error.message : null;
   const correlationId = isImportErrorPayload(error) ? error.correlationId : null;
+  const stage = isImportErrorPayload(error) ? error.stage : null;
+  const hint = isImportErrorPayload(error) ? error.hint : null;
+  const prismaCode = isImportErrorPayload(error) ? error.details?.prismaCode : null;
+
+  const pieces = [
+    message,
+    stage ? `Etapa: ${stageLabels[stage] ?? stage}` : null,
+    hint,
+    prismaCode ? `Prisma: ${prismaCode}` : null,
+    correlationId ? `Ref: ${correlationId}` : null,
+  ].filter(Boolean);
 
   switch (code) {
     case "DATABASE_UNAVAILABLE":
       return {
-        title: "Base temporariamente indisponível",
+        title: "Banco indisponível",
         description:
-          message ??
-          "A importação foi interrompida porque o banco local não respondeu. Tente novamente em instantes.",
+          pieces.join(" · ") ||
+          "A importação foi interrompida porque o banco não respondeu. Verifique as variáveis de ambiente e a conexão do banco.",
       };
     case "INVALID_FORM":
       return {
         title: "Envio inválido",
-        description: message ?? "O formulário não pôde ser lido. Recarregue a página e tente novamente.",
+        description:
+          pieces.join(" · ") ||
+          "O formulário não pôde ser lido. Recarregue a página e tente novamente.",
       };
     case "FILE_REQUIRED":
       return {
         title: "Selecione um arquivo",
-        description: message ?? "Envie um arquivo .xlsx ou .xls para continuar.",
+        description: pieces.join(" · ") || "Envie um arquivo .xlsx ou .xls para continuar.",
       };
     case "IMPORT_FAILED":
       return {
         title: "Falha na importação",
-        description: `${message ?? "Verifique o arquivo e tente novamente."}${correlationId ? ` Ref: ${correlationId}` : ""}`,
+        description: pieces.join(" · ") || "Verifique o arquivo e tente novamente.",
       };
     default:
       return {
         title: "Falha na importação",
-        description: `${message || (typeof error === "string" ? error : "Verifique o arquivo e tente novamente.")}${correlationId ? ` Ref: ${correlationId}` : ""}`,
+        description:
+          pieces.join(" · ") ||
+          `${message || (typeof error === "string" ? error : "Verifique o arquivo e tente novamente.")}`,
       };
   }
 }
@@ -96,6 +123,7 @@ export function ImportUpload() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [lastError, setLastError] = useState<ImportErrorPayload | null>(null);
 
   function openPicker() {
     inputRef.current?.click();
@@ -106,13 +134,20 @@ export function ImportUpload() {
     setFileName(file?.name ?? null);
     setFileSize(file ? humanFileSize(file.size) : null);
     setPreview(null);
+    setLastError(null);
   }
 
   async function submitImport(form: HTMLFormElement, dryRun: boolean) {
     const fd = new FormData(form);
     const file = fd.get("file");
     if (!(file instanceof File) || file.size === 0) {
-      toast.error("Selecione um arquivo .xlsx");
+      const error = {
+        code: "FILE_REQUIRED",
+        message: "Selecione um arquivo .xlsx ou .xls.",
+        correlationId: "client",
+      } satisfies ImportErrorPayload;
+      setLastError(error);
+      toast.error(errorMessage(error).title, { description: errorMessage(error).description });
       return;
     }
 
@@ -128,16 +163,27 @@ export function ImportUpload() {
         body: fd,
       });
       const data = await res.json().catch(() => ({}));
+      const apiError = isImportErrorPayload(data?.error) ? (data.error as ImportErrorPayload) : null;
 
       if (!res.ok) {
-        const message = errorMessage(data?.error);
+        const fallbackError: ImportErrorPayload = {
+          code: "IMPORT_FAILED",
+          message: "O servidor respondeu sem um detalhe legível.",
+          correlationId: "unknown",
+          stage: "unknown",
+        };
+        const normalizedError = apiError ?? fallbackError;
+        setLastError(normalizedError);
+        const message = errorMessage(normalizedError);
         toast.error(message.title, { description: message.description });
         return;
       }
 
+      setLastError(null);
+
       if (dryRun) {
         setPreview((data?.preview ?? null) as ImportPreview | null);
-        toast.success("Prévia pronta.");
+        toast.success("Pré-visualização pronta.");
         return;
       }
 
@@ -160,6 +206,16 @@ export function ImportUpload() {
       }
       router.push("/import/history");
       router.refresh();
+    } catch (error) {
+      const normalizedError: ImportErrorPayload = {
+        code: "IMPORT_FAILED",
+        message: error instanceof Error ? error.message : "Erro inesperado no navegador.",
+        correlationId: "client",
+        stage: "request",
+      };
+      setLastError(normalizedError);
+      const message = errorMessage(normalizedError);
+      toast.error(message.title, { description: message.description });
     } finally {
       if (dryRun) {
         setPreviewLoading(false);
@@ -180,6 +236,8 @@ export function ImportUpload() {
     if (!form) return;
     await submitImport(form as HTMLFormElement, true);
   }
+
+  const activeErrorMessage = lastError ? errorMessage(lastError) : null;
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
@@ -261,6 +319,23 @@ export function ImportUpload() {
                 )}
               </div>
             </div>
+
+            {lastError && activeErrorMessage ? (
+              <div className="rounded-[1.4rem] border border-rose-200 bg-rose-50/75 p-4 text-sm text-rose-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">
+                      Último erro
+                    </div>
+                    <div className="mt-1 text-base font-medium text-rose-950">{activeErrorMessage.title}</div>
+                  </div>
+                  <Badge variant="secondary" className="bg-white text-rose-700">
+                    {lastError.code}
+                  </Badge>
+                </div>
+                <div className="mt-2 leading-6 text-rose-900">{activeErrorMessage.description}</div>
+              </div>
+            ) : null}
 
             {preview ? (
               <div className="rounded-[1.4rem] border border-sky-200 bg-sky-50/70 p-4">

@@ -3,11 +3,8 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/services/auth/require";
-import {
-  importCompaniesFromExcel,
-  previewImportCompaniesFromExcel,
-} from "@/services/import/importExcel";
-import { classifyImportFailure, type ImportErrorPayload } from "@/services/import/errors";
+import { importCompaniesFromExcel, previewImportCompaniesFromExcel } from "@/services/import/importExcel";
+import { classifyImportFailure, type ImportErrorPayload, type ImportStage } from "@/services/import/errors";
 import { randomToken, sha256Base64UrlBytes } from "@/utils/crypto";
 
 function jsonImportError(payload: ImportErrorPayload, status: number) {
@@ -15,14 +12,18 @@ function jsonImportError(payload: ImportErrorPayload, status: number) {
 }
 
 export async function POST(request: Request) {
+  let stage: ImportStage = "request";
+
   const auth = await requireAuth({ role: "ADMIN" });
   if (!auth.ok) return auth.response;
+
   const url = new URL(request.url);
   const dryRun = url.searchParams.get("dryRun") === "1";
   let fileName: string | null = null;
   let fileHash: string | null = null;
 
   try {
+    stage = "form";
     const formData = await request.formData().catch(() => null);
     if (!formData) {
       return jsonImportError(
@@ -30,11 +31,14 @@ export async function POST(request: Request) {
           code: "INVALID_FORM",
           message: "O formulário não pôde ser lido. Recarregue a página e tente novamente.",
           correlationId: randomToken(10),
+          stage,
+          hint: "O navegador não conseguiu montar os campos esperados no formulário.",
         },
         400,
       );
     }
 
+    stage = "file";
     const file = formData.get("file");
     if (!(file instanceof File)) {
       return jsonImportError(
@@ -42,16 +46,20 @@ export async function POST(request: Request) {
           code: "FILE_REQUIRED",
           message: "Envie um arquivo .xlsx ou .xls para continuar.",
           correlationId: randomToken(10),
+          stage,
+          hint: "Nenhum arquivo foi encontrado no formulário enviado.",
         },
         400,
       );
     }
 
     fileName = file.name;
+    stage = "hash";
     const buffer = await file.arrayBuffer();
     fileHash = await sha256Base64UrlBytes(buffer);
 
     if (!dryRun) {
+      stage = "history_lookup";
       const existingImport = await prisma.importHistory.findFirst({
         where: { fileHash },
         orderBy: { createdAt: "desc" },
@@ -61,6 +69,7 @@ export async function POST(request: Request) {
       }
     }
 
+    stage = dryRun ? "preview" : "process";
     const result = dryRun
       ? await previewImportCompaniesFromExcel({
           actorUserId: auth.session.user.id,
@@ -80,9 +89,17 @@ export async function POST(request: Request) {
 
     return Response.json({ import: result, reused: false });
   } catch (error) {
-    const failure = classifyImportFailure(error);
+    const failure = classifyImportFailure(error, stage);
     const correlationId = randomToken(10);
-    console.error(`[import:${correlationId}] ${failure.code}`, error);
+    const debugError =
+      error instanceof Error
+        ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        : { message: String(error) };
+    console.error(`[import:${correlationId}] ${failure.code}`, { stage, error: debugError });
     const debug =
       process.env.NODE_ENV !== "production" && error instanceof Error
         ? {
@@ -127,6 +144,9 @@ export async function POST(request: Request) {
         code: failure.code,
         message: failure.message,
         correlationId,
+        stage,
+        ...(failure.hint ? { hint: failure.hint } : {}),
+        ...(failure.details ? { details: failure.details } : {}),
         ...(debug ? { debug } : {}),
       },
       failure.status,
