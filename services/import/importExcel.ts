@@ -722,42 +722,86 @@ function buildCompanyUpdatePayload(existing: Record<string, unknown>, data: Comp
   return payload;
 }
 
-async function findExistingCompany(db: Prisma.TransactionClient | typeof prisma, cnpjNumerico: string) {
-  return db.company.findFirst({
-    where: { cnpjNumerico },
-    select: {
-      id: true,
-      qtd: true,
-      codigoInterno: true,
-      codigoInternoNormalizado: true,
-      razaoSocial: true,
-      razaoSocialNormalizada: true,
-      nomeFantasia: true,
-      observacao: true,
-      cnpj: true,
-      cnpjNumerico: true,
-      raizCnpj: true,
-      ehGrupo: true,
-      grupo: true,
-      grupoNormalizado: true,
-      regimeTributario: true,
-      regimeNormalizado: true,
-      sistema: true,
-      certificado: true,
-      anexo: true,
-      das: true,
-      municipio: true,
-      telefoneContato: true,
-      telefoneContatoNumerico: true,
-      emailContato: true,
-      identityKind: true,
-      ativo: true,
-    },
-  });
+const COMPANY_SELECT = {
+  id: true,
+  qtd: true,
+  codigoInterno: true,
+  codigoInternoNormalizado: true,
+  razaoSocial: true,
+  razaoSocialNormalizada: true,
+  nomeFantasia: true,
+  observacao: true,
+  cnpj: true,
+  cnpjNumerico: true,
+  raizCnpj: true,
+  ehGrupo: true,
+  grupo: true,
+  grupoNormalizado: true,
+  regimeTributario: true,
+  regimeNormalizado: true,
+  sistema: true,
+  certificado: true,
+  anexo: true,
+  das: true,
+  municipio: true,
+  telefoneContato: true,
+  telefoneContatoNumerico: true,
+  emailContato: true,
+  identityKind: true,
+  ativo: true,
+  updatedAt: true,
+} satisfies Prisma.CompanySelect;
+
+const PARTNER_SELECT = {
+  id: true,
+  companyId: true,
+  nome: true,
+  nomeNormalizado: true,
+  telefone: true,
+  telefoneNormalizado: true,
+} satisfies Prisma.CompanyPartnerSelect;
+
+type CompanySnapshot = Prisma.CompanyGetPayload<{ select: typeof COMPANY_SELECT }>;
+type PartnerSnapshot = Prisma.CompanyPartnerGetPayload<{ select: typeof PARTNER_SELECT }>;
+
+type ExistingCompanyIndex = {
+  byId: Map<string, CompanySnapshot>;
+  byCnpj: Map<string, CompanySnapshot>;
+  byCodigoInterno: Map<string, CompanySnapshot>;
+  byRazaoRegime: Map<string, CompanySnapshot>;
+};
+
+type ExistingPartnerIndex = Map<string, Map<string, PartnerSnapshot>>;
+
+function chunkArray<T>(items: T[], size = 200) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
-async function findExistingCompanyByIdentity(
-  db: Prisma.TransactionClient | typeof prisma,
+function companyKey(razaoSocialNormalizada: string | null | undefined, regimeNormalizado: string | null | undefined) {
+  if (!razaoSocialNormalizada || !regimeNormalizado) return null;
+  return `${razaoSocialNormalizada}::${regimeNormalizado}`;
+}
+
+function addCompanyToIndex(index: ExistingCompanyIndex, company: CompanySnapshot) {
+  index.byId.set(company.id, company);
+  if (company.cnpjNumerico) index.byCnpj.set(company.cnpjNumerico, company);
+  if (company.codigoInternoNormalizado) index.byCodigoInterno.set(company.codigoInternoNormalizado, company);
+  const key = companyKey(company.razaoSocialNormalizada, company.regimeNormalizado);
+  if (key) index.byRazaoRegime.set(key, company);
+}
+
+function addPartnerToIndex(index: ExistingPartnerIndex, partner: PartnerSnapshot) {
+  const companyPartners = index.get(partner.companyId) ?? new Map<string, PartnerSnapshot>();
+  companyPartners.set(partner.nomeNormalizado, partner);
+  index.set(partner.companyId, companyPartners);
+}
+
+function resolveExistingCompanyFromIndex(
+  index: ExistingCompanyIndex,
   data: CompanyRecord,
   uniqueTargets: string[] = [],
 ) {
@@ -765,51 +809,19 @@ async function findExistingCompanyByIdentity(
     ? uniqueTargets
     : ["cnpjNumerico", "codigoInternoNormalizado", "razaoSocialNormalizada", "regimeNormalizado"];
 
-  const candidates = new Map<string, Awaited<ReturnType<typeof findExistingCompany>>>();
+  const candidates = new Map<string, CompanySnapshot>();
 
-  const addCandidate = async (company: Awaited<ReturnType<typeof findExistingCompany>> | null) => {
+  const addCandidate = (company: CompanySnapshot | null | undefined) => {
     if (!company) return;
     candidates.set(company.id, company);
   };
 
   if (targets.includes("cnpjNumerico") && data.cnpjNumerico) {
-    await addCandidate(await findExistingCompany(db, data.cnpjNumerico));
+    addCandidate(index.byCnpj.get(data.cnpjNumerico));
   }
 
   if (targets.includes("codigoInternoNormalizado") && data.codigoInternoNormalizado) {
-    await addCandidate(
-      await db.company.findFirst({
-        where: { codigoInternoNormalizado: data.codigoInternoNormalizado },
-        select: {
-          id: true,
-          qtd: true,
-          codigoInterno: true,
-          codigoInternoNormalizado: true,
-          razaoSocial: true,
-          razaoSocialNormalizada: true,
-          nomeFantasia: true,
-          observacao: true,
-          cnpj: true,
-          cnpjNumerico: true,
-          raizCnpj: true,
-          ehGrupo: true,
-          grupo: true,
-          grupoNormalizado: true,
-          regimeTributario: true,
-          regimeNormalizado: true,
-          sistema: true,
-          certificado: true,
-          anexo: true,
-          das: true,
-          municipio: true,
-          telefoneContato: true,
-          telefoneContatoNumerico: true,
-          emailContato: true,
-          identityKind: true,
-          ativo: true,
-        },
-      }),
-    );
+    addCandidate(index.byCodigoInterno.get(data.codigoInternoNormalizado));
   }
 
   if (
@@ -818,42 +830,7 @@ async function findExistingCompanyByIdentity(
     data.razaoSocialNormalizada &&
     data.regimeNormalizado
   ) {
-    await addCandidate(
-      await db.company.findFirst({
-        where: {
-          razaoSocialNormalizada: data.razaoSocialNormalizada,
-          regimeNormalizado: data.regimeNormalizado,
-        },
-        select: {
-          id: true,
-          qtd: true,
-          codigoInterno: true,
-          codigoInternoNormalizado: true,
-          razaoSocial: true,
-          razaoSocialNormalizada: true,
-          nomeFantasia: true,
-          observacao: true,
-          cnpj: true,
-          cnpjNumerico: true,
-          raizCnpj: true,
-          ehGrupo: true,
-          grupo: true,
-          grupoNormalizado: true,
-          regimeTributario: true,
-          regimeNormalizado: true,
-          sistema: true,
-          certificado: true,
-          anexo: true,
-          das: true,
-          municipio: true,
-          telefoneContato: true,
-          telefoneContatoNumerico: true,
-          emailContato: true,
-          identityKind: true,
-          ativo: true,
-        },
-      }),
-    );
+    addCandidate(index.byRazaoRegime.get(companyKey(data.razaoSocialNormalizada, data.regimeNormalizado) as string));
   }
 
   const uniqueCandidates = [...candidates.values()];
@@ -861,21 +838,84 @@ async function findExistingCompanyByIdentity(
   return null;
 }
 
-async function findExistingPartner(
-  db: Prisma.TransactionClient | typeof prisma,
+function resolveExistingPartnerFromIndex(
+  index: ExistingPartnerIndex,
   companyId: string,
   nameNormalizada: string,
 ) {
-  return db.companyPartner.findFirst({
-    where: { companyId, nomeNormalizado: nameNormalizada },
-    select: {
-      id: true,
-      nome: true,
-      nomeNormalizado: true,
-      telefone: true,
-      telefoneNormalizado: true,
-    },
-  });
+  return index.get(companyId)?.get(nameNormalizada) ?? null;
+}
+
+async function preloadExistingCompaniesIndex(
+  db: Prisma.TransactionClient | typeof prisma,
+  stagedCompanies: StagedCompany[],
+) {
+  const index: ExistingCompanyIndex = {
+    byId: new Map<string, CompanySnapshot>(),
+    byCnpj: new Map<string, CompanySnapshot>(),
+    byCodigoInterno: new Map<string, CompanySnapshot>(),
+    byRazaoRegime: new Map<string, CompanySnapshot>(),
+  };
+
+  const uniqueCnpjs = [...new Set(stagedCompanies.map((item) => item.createData.cnpjNumerico).filter(Boolean))];
+  const uniqueCodigos = [...new Set(stagedCompanies.map((item) => item.createData.codigoInternoNormalizado).filter(Boolean))];
+  const uniqueRazaoRegimes = stagedCompanies
+    .map((item) => {
+      const key = companyKey(item.createData.razaoSocialNormalizada, item.createData.regimeNormalizado);
+      if (!key) return null;
+      const [razaoSocialNormalizada, regimeNormalizado] = key.split("::");
+      return { razaoSocialNormalizada, regimeNormalizado };
+    })
+    .filter((value): value is { razaoSocialNormalizada: string; regimeNormalizado: string } => Boolean(value));
+
+  const loadCompanies = async (where: Prisma.CompanyWhereInput) => {
+    const companies = await db.company.findMany({
+      where,
+      select: COMPANY_SELECT,
+    });
+    for (const company of companies) {
+      addCompanyToIndex(index, company);
+    }
+  };
+
+  for (const chunk of chunkArray(uniqueCnpjs)) {
+    await loadCompanies({ cnpjNumerico: { in: chunk } });
+  }
+
+  for (const chunk of chunkArray(uniqueCodigos)) {
+    await loadCompanies({ codigoInternoNormalizado: { in: chunk } });
+  }
+
+  for (const chunk of chunkArray(uniqueRazaoRegimes, 150)) {
+    await loadCompanies({
+      OR: chunk.map((item) => ({
+        AND: [
+          { razaoSocialNormalizada: item.razaoSocialNormalizada },
+          { regimeNormalizado: item.regimeNormalizado },
+        ],
+      })),
+    });
+  }
+
+  return index;
+}
+
+async function preloadExistingPartnersIndex(
+  db: Prisma.TransactionClient | typeof prisma,
+  companyIds: string[],
+) {
+  const index: ExistingPartnerIndex = new Map();
+  for (const chunk of chunkArray([...new Set(companyIds)], 500)) {
+    if (!chunk.length) continue;
+    const partners = await db.companyPartner.findMany({
+      where: { companyId: { in: chunk } },
+      select: PARTNER_SELECT,
+    });
+    for (const partner of partners) {
+      addPartnerToIndex(index, partner);
+    }
+  }
+  return index;
 }
 
 function stripConflictingCompanyFields(data: CompanyUpdateData, targets: string[]) {
@@ -1073,10 +1113,51 @@ async function importCompaniesInTransaction(
   ignoredDuplicate += stagedCompanies.reduce((sum, item) => sum + item.duplicateRows, 0);
   const duplicateGroupCount = stagedCompanies.filter((item) => item.rowNumbers.length > 1).length;
 
+  const companyIndex = dryRun
+    ? {
+        byId: new Map<string, CompanySnapshot>(),
+        byCnpj: new Map<string, CompanySnapshot>(),
+        byCodigoInterno: new Map<string, CompanySnapshot>(),
+        byRazaoRegime: new Map<string, CompanySnapshot>(),
+      }
+    : await preloadExistingCompaniesIndex(db, stagedCompanies);
+
+  const partnerIndex = dryRun ? new Map<string, Map<string, PartnerSnapshot>>() : await preloadExistingPartnersIndex(
+    db,
+    [...companyIndex.byId.keys()],
+  );
+
+  const newCompanyCandidates = stagedCompanies.filter(
+    (item) => !resolveExistingCompanyFromIndex(companyIndex, item.createData),
+  );
+
+  if (!dryRun && newCompanyCandidates.length > 0) {
+    for (const chunk of chunkArray(newCompanyCandidates, 300)) {
+      const createResult = await db.company.createMany({
+        data: chunk.map((item) => toCompanyCreateData(item.createData)),
+        skipDuplicates: true,
+      });
+      created += createResult.count;
+
+      const refreshedIndex = await preloadExistingCompaniesIndex(db, chunk);
+      for (const company of refreshedIndex.byId.values()) {
+        addCompanyToIndex(companyIndex, company);
+      }
+    }
+  }
+
+  const pendingPartnerCreates: Array<{
+    companyId: string;
+    nome: string;
+    nomeNormalizado: string;
+    telefone: string | null;
+    telefoneNormalizado: string | null;
+  }> = [];
+
   const processItem = async (item: StagedCompany) => {
     if (!item.createData.cnpjNumerico) return;
 
-    let existing = await findExistingCompanyByIdentity(db, item.createData);
+    let existing = resolveExistingCompanyFromIndex(companyIndex, item.createData);
 
     if (!existing && !dryRun) {
       try {
@@ -1085,20 +1166,34 @@ async function importCompaniesInTransaction(
           select: { id: true },
         });
 
+        addCompanyToIndex(companyIndex, {
+          ...item.createData,
+          id: createdCompany.id,
+          updatedAt: new Date(),
+        } as CompanySnapshot);
+        partnerIndex.set(createdCompany.id, new Map<string, PartnerSnapshot>());
+
         for (const partner of item.partners) {
-          try {
-            await db.companyPartner.create({
-              data: {
-                companyId: createdCompany.id,
-                nome: partner.name,
-                nomeNormalizado: partner.nameNormalizada,
-                telefone: partner.telefone,
-                telefoneNormalizado: partner.telefoneNormalizado,
-              },
-            });
-          } catch (error) {
-            if (!isUniqueConstraintError(error)) throw error;
-          }
+          const companyPartners = partnerIndex.get(createdCompany.id) ?? new Map<string, PartnerSnapshot>();
+          const existingPartner = companyPartners.get(partner.nameNormalizada);
+          if (existingPartner) continue;
+
+          pendingPartnerCreates.push({
+            companyId: createdCompany.id,
+            nome: partner.name,
+            nomeNormalizado: partner.nameNormalizada,
+            telefone: partner.telefone,
+            telefoneNormalizado: partner.telefoneNormalizado,
+          });
+          companyPartners.set(partner.nameNormalizada, {
+            id: `pending-${createdCompany.id}-${partner.nameNormalizada}`,
+            companyId: createdCompany.id,
+            nome: partner.name,
+            nomeNormalizado: partner.nameNormalizada,
+            telefone: partner.telefone,
+            telefoneNormalizado: partner.telefoneNormalizado,
+          });
+          partnerIndex.set(createdCompany.id, companyPartners);
         }
 
         created += 1;
@@ -1108,7 +1203,7 @@ async function importCompaniesInTransaction(
         if (!isUniqueConstraintError(error)) throw error;
 
         const targets = extractUniqueConstraintTarget(error);
-        const resolvedExisting = await findExistingCompanyByIdentity(db, item.createData, targets);
+        const resolvedExisting = resolveExistingCompanyFromIndex(companyIndex, item.createData, targets);
         if (!resolvedExisting) {
           issues.push({
             sheet: item.sheetNames[0] ?? "unknown",
@@ -1153,24 +1248,28 @@ async function importCompaniesInTransaction(
     let partnerChanged = false;
 
     for (const partner of item.partners) {
-      const partnerExisting = await findExistingPartner(db, existing.id, partner.nameNormalizada);
+      const companyPartners = partnerIndex.get(existing.id) ?? new Map<string, PartnerSnapshot>();
+      const partnerExisting = resolveExistingPartnerFromIndex(partnerIndex, existing.id, partner.nameNormalizada);
       if (!partnerExisting) {
         partnersCreated += 1;
         partnerChanged = true;
         if (!dryRun) {
-          try {
-            await db.companyPartner.create({
-              data: {
-                companyId: existing.id,
-                nome: partner.name,
-                nomeNormalizado: partner.nameNormalizada,
-                telefone: partner.telefone,
-                telefoneNormalizado: partner.telefoneNormalizado,
-              },
-            });
-          } catch (error) {
-            if (!isUniqueConstraintError(error)) throw error;
-          }
+          pendingPartnerCreates.push({
+            companyId: existing.id,
+            nome: partner.name,
+            nomeNormalizado: partner.nameNormalizada,
+            telefone: partner.telefone,
+            telefoneNormalizado: partner.telefoneNormalizado,
+          });
+          companyPartners.set(partner.nameNormalizada, {
+            id: `pending-${existing.id}-${partner.nameNormalizada}`,
+            companyId: existing.id,
+            nome: partner.name,
+            nomeNormalizado: partner.nameNormalizada,
+            telefone: partner.telefone,
+            telefoneNormalizado: partner.telefoneNormalizado,
+          });
+          partnerIndex.set(existing.id, companyPartners);
         }
         continue;
       }
@@ -1210,6 +1309,11 @@ async function importCompaniesInTransaction(
           where: { id: existing.id },
           data: safeUpdatePayload,
         });
+        addCompanyToIndex(companyIndex, {
+          ...(existing as CompanySnapshot),
+          ...safeUpdatePayload,
+          updatedAt: new Date(),
+        } as CompanySnapshot);
       } catch (error) {
         if (!isUniqueConstraintError(error)) throw error;
 
@@ -1230,6 +1334,11 @@ async function importCompaniesInTransaction(
           where: { id: existing.id },
           data: retryPayload,
         });
+        addCompanyToIndex(companyIndex, {
+          ...(existing as CompanySnapshot),
+          ...retryPayload,
+          updatedAt: new Date(),
+        } as CompanySnapshot);
 
         issues.push({
           sheet: item.sheetNames[0] ?? "unknown",
@@ -1256,6 +1365,15 @@ async function importCompaniesInTransaction(
 
   for (const item of stagedCompanies) {
     await processItem(item);
+  }
+
+  if (!dryRun && pendingPartnerCreates.length > 0) {
+    for (const chunk of chunkArray(pendingPartnerCreates, 500)) {
+      await db.companyPartner.createMany({
+        data: chunk,
+        skipDuplicates: true,
+      });
+    }
   }
 
   const contactUpdates = companyContactUpdates + partnersUpdated;
