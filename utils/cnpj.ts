@@ -7,6 +7,13 @@ export function normalizeCnpj(raw: string | null | undefined) {
   return digits;
 }
 
+export function formatCnpjDisplay(raw: string | null | undefined) {
+  const digits = normalizeCnpj(raw);
+  if (!digits) return "-";
+  if (digits.length !== 14) return raw?.trim() || "-";
+  return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+}
+
 export function cnpjRaiz(cnpjNumerico: string) {
   return cnpjNumerico.slice(0, 8);
 }
@@ -30,4 +37,3 @@ export function isValidCnpj(cnpjNumerico: string) {
 
   return d1 === nums[12] && d2 === nums[13];
 }
-

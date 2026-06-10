@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 type Item = {
   id: string;
@@ -92,7 +93,7 @@ export function AndamentosGantt(props: { items: Item[] }) {
               <div className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{group.company.cnpjNumerico || "-"}</div>
+                  <div className="truncate text-xs text-muted-foreground">{formatCnpjDisplay(group.company.cnpjNumerico)}</div>
                 </div>
                 <div className="text-xs text-muted-foreground">{group.rows.length} item(ns)</div>
               </div>

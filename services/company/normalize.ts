@@ -1,7 +1,6 @@
 import { cnpjRaiz, isValidCnpj, normalizeCnpj } from "@/utils/cnpj";
 import { isValidEmailAddress, normalizeEmailAddress, normalizePhoneDigits, normalizePhoneDisplay } from "@/utils/contact";
 import { buildCompanyIdentity } from "@/services/company/identity";
-import { parseContractDate } from "@/utils/contracts";
 import { normalizeText } from "@/utils/strings";
 
 export type CompanyInput = {
@@ -34,9 +33,6 @@ export type CompanyInput = {
   uf?: string | null;
   cnaePrincipal?: string | null;
   cnaesSecundarios?: string[] | null;
-  contractStartedAt?: Date | string | null;
-  contractEndedAt?: Date | string | null;
-  contractPredictedEndedAt?: Date | string | null;
   externalOrigin?: string | null;
   fundarmfCaseId?: string | null;
   importedAt?: Date | null;
@@ -96,12 +92,6 @@ export function normalizeCompany(input: CompanyInput) {
     uf: input.uf?.trim().toUpperCase() || null,
     cnaePrincipal: input.cnaePrincipal?.trim() || null,
     cnaesSecundarios: input.cnaesSecundarios?.map((item) => item.trim()).filter((item): item is string => Boolean(item)) ?? null,
-    contractStartedAt:
-      parseContractDate(input.contractStartedAt),
-    contractEndedAt:
-      parseContractDate(input.contractEndedAt),
-    contractPredictedEndedAt:
-      parseContractDate(input.contractPredictedEndedAt),
     externalOrigin: input.externalOrigin?.trim() || null,
     fundarmfCaseId: input.fundarmfCaseId?.trim() || null,
     importedAt: input.importedAt ?? null,

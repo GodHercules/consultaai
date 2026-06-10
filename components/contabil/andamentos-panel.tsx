@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 type CompanyOption = { id: string; label: string };
 
@@ -156,7 +157,7 @@ export function AndamentosPanel(props: { companies: CompanyOption[]; initialItem
                     <div className="truncate font-medium">{i.title}</div>
                     <div className="truncate text-muted-foreground">
                       {(i.company.razaoSocial || i.company.nomeFantasia || "(sem nome)") as string} •{" "}
-                      {i.company.cnpjNumerico || "-"}
+                      {formatCnpjDisplay(i.company.cnpjNumerico)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

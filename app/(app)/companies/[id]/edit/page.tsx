@@ -4,7 +4,6 @@ import { getSessionUser } from "@/services/auth/session";
 import { CompanyForm } from "@/components/companies/company-form";
 import { PageHeader } from "@/components/app/page-header";
 import { Badge } from "@/components/ui/badge";
-import { formatDateInput } from "@/utils/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +33,6 @@ export default async function CompanyEditPage(props: {
     municipio: string | null;
     telefoneContato: string | null;
     emailContato: string | null;
-    contractStartedAt: Date | null;
-    contractEndedAt: Date | null;
-    contractPredictedEndedAt: Date | null;
     ativo: boolean;
   } | null = null;
 
@@ -111,9 +107,6 @@ export default async function CompanyEditPage(props: {
           municipio: company.municipio,
           telefoneContato: company.telefoneContato,
           emailContato: company.emailContato,
-          contractStartedAt: formatDateInput(company.contractStartedAt),
-          contractEndedAt: formatDateInput(company.contractEndedAt),
-          contractPredictedEndedAt: formatDateInput(company.contractPredictedEndedAt),
           ativo: company.ativo,
         }}
       />

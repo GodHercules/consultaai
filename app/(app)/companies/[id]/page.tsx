@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/page-header";
-import { formatContractTenure, formatDateDisplay } from "@/utils/contracts";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,6 @@ export default async function CompanyDetailPage(props: {
   const { id } = await props.params;
   let company: {
     id: string;
-    qtd: number | null;
     codigoInterno: string | null;
     razaoSocial: string | null;
     nomeFantasia: string | null;
@@ -54,9 +53,6 @@ export default async function CompanyDetailPage(props: {
     municipio: string | null;
     telefoneContato: string | null;
     emailContato: string | null;
-    contractStartedAt: Date | null;
-    contractEndedAt: Date | null;
-    contractPredictedEndedAt: Date | null;
     ehGrupo: boolean | null;
     ativo: boolean;
     importWarning: string | null;
@@ -102,19 +98,20 @@ export default async function CompanyDetailPage(props: {
   }
 
   const displayName = company.razaoSocial || company.nomeFantasia || "Empresa";
-  const cnpjLabel = company.cnpjNumerico || company.cnpj || "-";
+  const cnpjLabel = formatCnpjDisplay(company.cnpjNumerico || company.cnpj);
   const codeLabel = company.codigoInterno || "-";
   const municipalityLabel = company.municipio || "-";
   const phoneLabel = company.telefoneContato || "-";
   const emailLabel = company.emailContato || "-";
   const status = statusMeta(company.ativo);
+  const groupLabel = company.ehGrupo && company.grupo ? company.grupo : null;
 
   return (
     <div className="space-y-6">
       <PageHeader
         kicker="Cadastro e contexto"
         title={displayName}
-        description={`${cnpjLabel} • CÓD ${codeLabel} • ${municipalityLabel} • ${company.grupo || "Sem grupo"}`}
+        description={`${cnpjLabel} • CÓD ${codeLabel} • ${municipalityLabel}${groupLabel ? ` • Grupo ${groupLabel}` : ""}`}
         breadcrumbs={[
           { label: "Consulta avançada", href: "/companies" },
           { label: displayName },
@@ -147,14 +144,14 @@ export default async function CompanyDetailPage(props: {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardHeader>
             <CardDescription>Resumo cadastral</CardDescription>
             <CardTitle>Dados principais</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 sm:col-span-2">
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 sm:col-span-2 xl:col-span-3">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Status cadastral</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge className={status.badgeClassName}>{status.label}</Badge>
@@ -164,8 +161,8 @@ export default async function CompanyDetailPage(props: {
             </div>
 
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">QTD</div>
-              <div className="mt-2 text-sm font-medium">{company.qtd ?? "-"}</div>
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">CNPJ</div>
+              <div className="mt-2 text-sm font-medium">{cnpjLabel}</div>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">CÓD</div>
@@ -192,43 +189,21 @@ export default async function CompanyDetailPage(props: {
               <div className="mt-2 text-sm font-medium break-all">{emailLabel}</div>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Início do contrato</div>
-              <div className="mt-2 text-sm font-medium">{formatDateDisplay(company.contractStartedAt)}</div>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Fim do contrato</div>
-              <div className="mt-2 text-sm font-medium">{formatDateDisplay(company.contractEndedAt)}</div>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Previsão de fim</div>
-              <div className="mt-2 text-sm font-medium">
-                {formatDateDisplay(company.contractPredictedEndedAt)}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tempo com agente</div>
-              <div className="mt-2 text-sm font-medium">
-                {formatContractTenure(company.contractStartedAt, company.contractEndedAt) || "-"}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Grupo</div>
-              <div className="mt-2 text-sm font-medium">{company.grupo || "-"}</div>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">É grupo?</div>
-              <div className="mt-2 text-sm font-medium">{company.ehGrupo === null ? "-" : company.ehGrupo ? "Sim" : "Não"}</div>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Regime tributário</div>
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tipo de tributação</div>
               <div className="mt-2 text-sm font-medium">{company.regimeTributario || "-"}</div>
             </div>
+            {groupLabel ? (
+              <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Grupo</div>
+                <div className="mt-2 text-sm font-medium">{groupLabel}</div>
+              </div>
+            ) : null}
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Sistema</div>
               <div className="mt-2 text-sm font-medium">{company.sistema || "-"}</div>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Certificado</div>
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Regime</div>
               <div className="mt-2 text-sm font-medium">{company.certificado || "-"}</div>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">

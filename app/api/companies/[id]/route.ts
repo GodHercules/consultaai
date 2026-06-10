@@ -7,7 +7,6 @@ import { auditLog } from "@/services/audit";
 import { isUniqueConstraintError } from "@/services/db/errors";
 import { requireAuth } from "@/services/auth/require";
 import { normalizeCompany } from "@/services/company/normalize";
-import { parseContractDate } from "@/utils/contracts";
 
 const nullableInteger = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) return null;
@@ -19,8 +18,6 @@ const nullableInteger = z.preprocess((value) => {
   }
   return value;
 }, z.number().int().optional().nullable());
-
-const nullableDate = z.preprocess((value) => parseContractDate(value as Date | string | null | undefined), z.date().optional().nullable());
 
 const updateSchema = z.object({
   qtd: nullableInteger,
@@ -39,9 +36,6 @@ const updateSchema = z.object({
   municipio: z.string().optional().nullable(),
   telefoneContato: z.string().optional().nullable(),
   emailContato: z.string().optional().nullable(),
-  contractStartedAt: nullableDate,
-  contractEndedAt: nullableDate,
-  contractPredictedEndedAt: nullableDate,
   ativo: z.boolean().optional().nullable(),
 });
 

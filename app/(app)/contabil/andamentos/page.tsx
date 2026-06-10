@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/services/auth/session";
 import { AndamentosPanel } from "@/components/contabil/andamentos-panel";
 import { PageHeader } from "@/components/app/page-header";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export default async function AndamentosContabilPage() {
       <AndamentosPanel
         companies={companies.map((c) => ({
           id: c.id,
-          label: `${c.razaoSocial || c.nomeFantasia || "(sem nome)"} • ${c.cnpjNumerico || "-"}`,
+          label: `${c.razaoSocial || c.nomeFantasia || "(sem nome)"} • ${formatCnpjDisplay(c.cnpjNumerico)}`,
         }))}
           initialItems={items.map((i) => ({
             ...i,

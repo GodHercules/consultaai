@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/app/page-header";
 import { cn } from "@/lib/utils";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +55,6 @@ function buildHref(base: { q: string; status: SearchStatus; page: number }) {
   if (base.page > 1) params.set("page", String(base.page));
   const query = params.toString();
   return query ? `/companies?${query}` : "/companies";
-}
-
-function formatCnpj(value: string | null | undefined) {
-  const digits = (value ?? "").replace(/\D+/g, "");
-  if (digits.length !== 14) return value ?? "";
-  return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 }
 
 export default async function CompaniesPage(props: {
@@ -295,7 +290,7 @@ export default async function CompaniesPage(props: {
                       <div className="mt-3 flex flex-wrap gap-2 text-[0.72rem] text-muted-foreground">
                         {c.cnpjNumerico ? (
                           <span className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1">
-                            CNPJ {formatCnpj(c.cnpjNumerico)}
+                            CNPJ {formatCnpjDisplay(c.cnpjNumerico)}
                           </span>
                         ) : null}
                         {c.codigoInterno ? (
@@ -310,7 +305,7 @@ export default async function CompaniesPage(props: {
                         ) : null}
                         {c.regimeTributario ? (
                           <span className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1">
-                            {c.regimeTributario}
+                            Tipo de tributação {c.regimeTributario}
                           </span>
                         ) : null}
                       </div>

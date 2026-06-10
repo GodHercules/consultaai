@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 export type PendingCompanyListItem = {
   id: string;
@@ -75,7 +76,7 @@ export function PendingCompaniesTable(props: { initialItems: PendingCompanyListI
                 {c.razaoSocial || c.nomeFantasia || "(sem nome)"}
               </div>
               <div className="truncate text-muted-foreground">
-                {c.cnpjNumerico || "-"} • {c.codigoInterno || "-"} • {c.grupo || "-"} • {c.sistema || "-"}
+                {formatCnpjDisplay(c.cnpjNumerico)} • {c.codigoInterno || "-"} • {c.grupo || "-"} • {c.sistema || "-"}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline">{c.source}</Badge>

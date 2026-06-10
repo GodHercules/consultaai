@@ -114,9 +114,6 @@ model Company {
     uf                    String?
     cnaePrincipal         String?
     cnaesSecundarios      Json?
-    contractStartedAt     DateTime?
-    contractEndedAt       DateTime?
-    contractPredictedEndedAt DateTime?
     externalOrigin        String?
     fundarmfCaseId        String?
     importedAt            DateTime?
@@ -149,9 +146,6 @@ model Company {
   @@index([razaoSocialNormalizada])
     @@index([regimeNormalizado])
     @@index([ativo])
-    @@index([contractStartedAt])
-    @@index([contractEndedAt])
-    @@index([contractPredictedEndedAt])
   }
 
 model CompanyPartner {

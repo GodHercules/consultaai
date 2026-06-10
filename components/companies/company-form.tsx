@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 type CompanyFormData = {
   qtd?: string | null;
@@ -26,11 +27,23 @@ type CompanyFormData = {
   municipio?: string | null;
   telefoneContato?: string | null;
   emailContato?: string | null;
-  contractStartedAt?: string | null;
-  contractEndedAt?: string | null;
-  contractPredictedEndedAt?: string | null;
   ativo?: boolean | null;
 };
+
+function normalizeDigits(value: string) {
+  return value.replace(/\D+/g, "");
+}
+
+function formatCnpjInput(value: string) {
+  const digits = normalizeDigits(value).slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  }
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
 
 export function CompanyForm(props: {
   mode: "create" | "edit";
@@ -45,7 +58,7 @@ export function CompanyForm(props: {
     razaoSocial: props.initial?.razaoSocial ?? "",
     nomeFantasia: props.initial?.nomeFantasia ?? "",
     observacao: props.initial?.observacao ?? "",
-    cnpj: props.initial?.cnpj ?? "",
+    cnpj: formatCnpjDisplay(props.initial?.cnpj ?? ""),
     ehGrupo: props.initial?.ehGrupo ?? null,
     grupo: props.initial?.grupo ?? "",
     regimeTributario: props.initial?.regimeTributario ?? "",
@@ -56,9 +69,6 @@ export function CompanyForm(props: {
     municipio: props.initial?.municipio ?? "",
     telefoneContato: props.initial?.telefoneContato ?? "",
     emailContato: props.initial?.emailContato ?? "",
-    contractStartedAt: props.initial?.contractStartedAt ?? "",
-    contractEndedAt: props.initial?.contractEndedAt ?? "",
-    contractPredictedEndedAt: props.initial?.contractPredictedEndedAt ?? "",
   });
 
   function set<K extends keyof CompanyFormData>(key: K, value: CompanyFormData[K]) {
@@ -69,10 +79,7 @@ export function CompanyForm(props: {
     e.preventDefault();
     setLoading(true);
     try {
-      const url =
-        props.mode === "create"
-          ? "/api/companies"
-          : `/api/companies/${props.companyId}`;
+      const url = props.mode === "create" ? "/api/companies" : `/api/companies/${props.companyId}`;
       const method = props.mode === "create" ? "POST" : "PATCH";
       const res = await fetch(url, {
         method,
@@ -114,7 +121,13 @@ export function CompanyForm(props: {
           </div>
           <div className="space-y-2">
             <Label htmlFor="cnpj">CNPJ</Label>
-            <Input id="cnpj" value={form.cnpj ?? ""} onChange={(e) => set("cnpj", e.target.value)} placeholder="00.000.000/0000-00" />
+            <Input
+              id="cnpj"
+              value={form.cnpj ?? ""}
+              onChange={(e) => set("cnpj", formatCnpjInput(e.target.value))}
+              placeholder="00.000.000/0000-00"
+              inputMode="numeric"
+            />
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="razaoSocial">Razão social</Label>
@@ -148,52 +161,12 @@ export function CompanyForm(props: {
             />
           </div>
 
-          <div className="md:col-span-2 rounded-2xl border border-border/70 bg-background/50 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Contrato</div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Datas que ajudam a visualizar a jornada da empresa com a operação.
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="contractStartedAt">Início do contrato</Label>
-                <Input
-                  id="contractStartedAt"
-                  type="date"
-                  value={form.contractStartedAt ?? ""}
-                  onChange={(e) => set("contractStartedAt", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contractEndedAt">Fim do contrato</Label>
-                <Input
-                  id="contractEndedAt"
-                  type="date"
-                  value={form.contractEndedAt ?? ""}
-                  onChange={(e) => set("contractEndedAt", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contractPredictedEndedAt">Previsão de fim</Label>
-                <Input
-                  id="contractPredictedEndedAt"
-                  type="date"
-                  value={form.contractPredictedEndedAt ?? ""}
-                  onChange={(e) => set("contractPredictedEndedAt", e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="grupo">Grupo</Label>
             <Input id="grupo" value={form.grupo ?? ""} onChange={(e) => set("grupo", e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="regimeTributario">Regime tributário</Label>
+            <Label htmlFor="regimeTributario">Tipo de tributação</Label>
             <Input id="regimeTributario" value={form.regimeTributario ?? ""} onChange={(e) => set("regimeTributario", e.target.value)} />
           </div>
           <div className="space-y-2">
@@ -201,7 +174,7 @@ export function CompanyForm(props: {
             <Input id="sistema" value={form.sistema ?? ""} onChange={(e) => set("sistema", e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="certificado">Certificado</Label>
+            <Label htmlFor="certificado">Regime</Label>
             <Input id="certificado" value={form.certificado ?? ""} onChange={(e) => set("certificado", e.target.value)} />
           </div>
           <div className="space-y-2">
