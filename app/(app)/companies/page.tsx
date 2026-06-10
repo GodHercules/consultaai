@@ -234,6 +234,12 @@ export default async function CompaniesPage(props: {
                 <Input id="q" name="q" defaultValue={q} placeholder="CNPJ, razão social, fantasia..." />
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="municipio">
+                  Município
+                </label>
+                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="status">
                   Status
                 </label>
@@ -247,12 +253,6 @@ export default async function CompaniesPage(props: {
                   <option value="active">Ativas</option>
                   <option value="inactive">Inativas</option>
                 </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="municipio">
-                  Município
-                </label>
-                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
               </div>
               <Button type="submit" className="w-full md:w-auto">
                 <SearchIcon className="size-4" />

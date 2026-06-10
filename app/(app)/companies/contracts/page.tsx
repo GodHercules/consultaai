@@ -183,6 +183,13 @@ export default async function CompanyContractsPage(props: {
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="municipio">
+                  Município
+                </label>
+                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="sort">
                   Ordenação
                 </label>
@@ -195,13 +202,6 @@ export default async function CompanyContractsPage(props: {
                   <option value="recent">Mais recentes</option>
                   <option value="name">Nome A-Z</option>
                 </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="municipio">
-                  Município
-                </label>
-                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
               </div>
 
               <Button type="submit" className="w-full xl:w-auto">
