@@ -214,7 +214,7 @@ export default async function CompanyDetailPage(props: {
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">DAS</div>
               <div className="mt-2 text-sm font-medium">{company.das || "-"}</div>
             </div>
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 sm:col-span-2">
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 col-span-full">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Observações</div>
               <div className="mt-2 whitespace-pre-wrap text-sm leading-6">{company.observacao || "-"}</div>
             </div>
