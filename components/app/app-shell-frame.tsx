@@ -92,7 +92,7 @@ export function AppShellFrame(props: {
       <div
         className={cn(
           "grid w-full grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:gap-4 lg:px-0 lg:py-6 xl:gap-5 xl:py-8",
-          pinnedOpen ? "lg:grid-cols-[18.5rem_minmax(0,1fr)]" : "lg:grid-cols-[5.75rem_minmax(0,1fr)]"
+          pinnedOpen ? "lg:grid-cols-[18.5rem_minmax(0,1fr)]" : "lg:grid-cols-[6.5rem_minmax(0,1fr)]"
         )}
       >
         <aside className="hidden w-full lg:block">

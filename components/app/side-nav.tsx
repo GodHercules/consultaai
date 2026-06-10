@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState, type FocusEvent, type MouseEvent, type RefObject } from "react";
 import type { Department, Role } from "@prisma/client";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -36,6 +37,12 @@ type NavGroup = {
   title: string;
   subtitle: string;
   items: NavItem[];
+};
+
+type HoverTooltip = {
+  label: string;
+  top: number;
+  left: number;
 };
 
 const groups: NavGroup[] = [
@@ -94,9 +101,18 @@ function NavLink(props: {
   item: NavItem;
   active: boolean;
   collapsed?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  onHoverChange?: (tooltip: HoverTooltip | null) => void;
 }) {
   const Icon = props.item.icon;
   const compact = Boolean(props.collapsed);
+
+  function showTooltip(event: MouseEvent<HTMLAnchorElement> | FocusEvent<HTMLAnchorElement>) {
+    if (!compact || !props.containerRef?.current || !props.onHoverChange) return;
+    const itemRect = event.currentTarget.getBoundingClientRect();
+    const top = itemRect.top + itemRect.height / 2;
+    props.onHoverChange({ label: props.item.label, top, left: itemRect.right + 12 });
+  }
 
   return (
     <Link
@@ -110,6 +126,10 @@ function NavLink(props: {
           : "border-slate-200 bg-white/80 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-950"
       )}
       aria-current={props.active ? "page" : undefined}
+      onMouseEnter={showTooltip}
+      onFocus={showTooltip}
+      onMouseLeave={() => props.onHoverChange?.(null)}
+      onBlur={() => props.onHoverChange?.(null)}
     >
       <span
         aria-hidden="true"
@@ -123,16 +143,7 @@ function NavLink(props: {
         {props.active && !compact ? <span className="absolute inset-0 rounded-[1rem] border border-slate-100 opacity-70" /> : null}
       </span>
 
-      {compact ? (
-        <span
-          className={cn(
-            "mt-1 max-w-[4.75rem] truncate text-center text-[0.52rem] font-semibold uppercase tracking-[0.18em] transition-opacity duration-200",
-            props.active ? "text-[#1d4ed8] opacity-100" : "text-slate-500 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
-          )}
-        >
-          {props.item.label}
-        </span>
-      ) : (
+      {compact ? null : (
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{props.item.label}</span>
           <span className={cn("mt-0.5 block truncate text-xs", props.active ? "text-slate-600" : "text-slate-500")}>
@@ -157,6 +168,8 @@ export function SideNav(props: {
   onTogglePinned?: () => void;
 }) {
   const pathname = usePathname();
+  const shellRef = useRef<HTMLElement | null>(null);
+  const [hoverTooltip, setHoverTooltip] = useState<HoverTooltip | null>(null);
   const visibleGroups = groups
     .map((group) => ({
       ...group,
@@ -205,7 +218,9 @@ export function SideNav(props: {
 
   return (
     <nav
+      ref={shellRef}
       className="relative z-30 flex h-full min-h-0 w-full flex-col overflow-visible rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]"
+      onMouseLeave={() => setHoverTooltip(null)}
     >
       <div className="border-b border-slate-200/80 p-3">
         <div className={cn("flex items-center", compact ? "justify-center" : "justify-between gap-2")}>
@@ -255,7 +270,16 @@ export function SideNav(props: {
           <div className="space-y-2">
             {flattenedItems.map((item) => {
               const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
-              return <NavLink key={item.href} item={item} active={active} collapsed />;
+              return (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  active={active}
+                  collapsed
+                  containerRef={shellRef}
+                  onHoverChange={setHoverTooltip}
+                />
+              );
             })}
           </div>
         ) : (
@@ -277,6 +301,15 @@ export function SideNav(props: {
           </div>
         )}
       </div>
+
+      {compact && hoverTooltip ? (
+        <div
+          className="pointer-events-none fixed z-[100] whitespace-nowrap rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-white shadow-[0_18px_40px_-22px_rgba(15,23,42,0.45)]"
+          style={{ top: `${hoverTooltip.top}px`, left: `${hoverTooltip.left}px`, transform: "translateY(-50%)" }}
+        >
+          {hoverTooltip.label}
+        </div>
+      ) : null}
 
       {!compact ? (
         <div className="border-t border-slate-200/80 p-3">
