@@ -90,18 +90,21 @@ function toneStyles(active: boolean, tone: NavItem["tone"]) {
   }
 }
 
-function NavLink(props: { item: NavItem; active: boolean; collapsed?: boolean }) {
+function NavLink(props: {
+  item: NavItem;
+  active: boolean;
+  collapsed?: boolean;
+}) {
   const Icon = props.item.icon;
   const compact = Boolean(props.collapsed);
 
   return (
     <Link
       href={props.item.href}
-      title={compact ? props.item.label : undefined}
       aria-label={props.item.label}
       className={cn(
         "group flex w-full items-center rounded-[1.2rem] border text-sm transition-all duration-200",
-        compact ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-3.5",
+        compact ? "flex-col justify-center px-1.5 py-2.5" : "gap-3 px-3 py-3.5",
         props.active
           ? "border-[#bfdbfe] bg-white text-slate-950 shadow-[0_14px_36px_-26px_rgba(29,78,216,0.18)]"
           : "border-slate-200 bg-white/80 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-950"
@@ -120,7 +123,16 @@ function NavLink(props: { item: NavItem; active: boolean; collapsed?: boolean })
         {props.active && !compact ? <span className="absolute inset-0 rounded-[1rem] border border-slate-100 opacity-70" /> : null}
       </span>
 
-      {compact ? null : (
+      {compact ? (
+        <span
+          className={cn(
+            "mt-1 max-w-[4.75rem] truncate text-center text-[0.52rem] font-semibold uppercase tracking-[0.18em] transition-opacity duration-200",
+            props.active ? "text-[#1d4ed8] opacity-100" : "text-slate-500 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+          )}
+        >
+          {props.item.label}
+        </span>
+      ) : (
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{props.item.label}</span>
           <span className={cn("mt-0.5 block truncate text-xs", props.active ? "text-slate-600" : "text-slate-500")}>
@@ -192,17 +204,12 @@ export function SideNav(props: {
   }
 
   return (
-    <nav className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
+    <nav
+      className="relative z-30 flex h-full min-h-0 w-full flex-col overflow-visible rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]"
+    >
       <div className="border-b border-slate-200/80 p-3">
-        <div className={cn("flex items-center gap-2", compact ? "justify-center" : "justify-between")}>
-          {compact ? (
-            <div className="flex flex-col items-center gap-1">
-              <div className="flex size-11 items-center justify-center rounded-[1.1rem] border border-[#bfdbfe] bg-[#1d4ed8] text-sm font-semibold text-white shadow-[0_16px_40px_-28px_rgba(29,78,216,0.45)]">
-                CC
-              </div>
-              <div className="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-slate-500">Menu</div>
-            </div>
-          ) : (
+        <div className={cn("flex items-center", compact ? "justify-center" : "justify-between gap-2")}>
+          {compact ? null : (
             <div className="min-w-0">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.4em] text-slate-500">Central de Clientes</p>
               <p className="mt-1.5 font-display text-[1.03rem] leading-tight tracking-[-0.03em] text-slate-950">
