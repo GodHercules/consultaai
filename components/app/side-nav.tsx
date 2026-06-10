@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState, type FocusEvent, type MouseEvent, type RefObject } from "react";
+import { useState, type FocusEvent, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import type { Department, Role } from "@prisma/client";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -101,14 +102,13 @@ function NavLink(props: {
   item: NavItem;
   active: boolean;
   collapsed?: boolean;
-  containerRef?: RefObject<HTMLElement | null>;
   onHoverChange?: (tooltip: HoverTooltip | null) => void;
 }) {
   const Icon = props.item.icon;
   const compact = Boolean(props.collapsed);
 
   function showTooltip(event: MouseEvent<HTMLAnchorElement> | FocusEvent<HTMLAnchorElement>) {
-    if (!compact || !props.containerRef?.current || !props.onHoverChange) return;
+    if (!compact || !props.onHoverChange) return;
     const itemRect = event.currentTarget.getBoundingClientRect();
     const top = itemRect.top + itemRect.height / 2;
     props.onHoverChange({ label: props.item.label, top, left: itemRect.right + 12 });
@@ -168,7 +168,6 @@ export function SideNav(props: {
   onTogglePinned?: () => void;
 }) {
   const pathname = usePathname();
-  const shellRef = useRef<HTMLElement | null>(null);
   const [hoverTooltip, setHoverTooltip] = useState<HoverTooltip | null>(null);
   const visibleGroups = groups
     .map((group) => ({
@@ -217,11 +216,7 @@ export function SideNav(props: {
   }
 
   return (
-    <nav
-      ref={shellRef}
-      className="relative z-30 flex h-full min-h-0 w-full flex-col overflow-visible rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]"
-      onMouseLeave={() => setHoverTooltip(null)}
-    >
+    <nav className="relative z-30 flex h-full min-h-0 w-full flex-col overflow-visible rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
       <div className="border-b border-slate-200/80 p-3">
         <div className={cn("flex items-center", compact ? "justify-center" : "justify-between gap-2")}>
           {compact ? null : (
@@ -276,7 +271,6 @@ export function SideNav(props: {
                   item={item}
                   active={active}
                   collapsed
-                  containerRef={shellRef}
                   onHoverChange={setHoverTooltip}
                 />
               );
@@ -302,14 +296,17 @@ export function SideNav(props: {
         )}
       </div>
 
-      {compact && hoverTooltip ? (
-        <div
-          className="pointer-events-none fixed z-[100] whitespace-nowrap rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-white shadow-[0_18px_40px_-22px_rgba(15,23,42,0.45)]"
-          style={{ top: `${hoverTooltip.top}px`, left: `${hoverTooltip.left}px`, transform: "translateY(-50%)" }}
-        >
-          {hoverTooltip.label}
-        </div>
-      ) : null}
+      {compact && hoverTooltip && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[9999] whitespace-nowrap rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-white shadow-[0_18px_40px_-22px_rgba(15,23,42,0.45)]"
+              style={{ top: `${hoverTooltip.top}px`, left: `${hoverTooltip.left}px`, transform: "translateY(-50%)" }}
+            >
+              {hoverTooltip.label}
+            </div>,
+            document.body
+          )
+        : null}
 
       {!compact ? (
         <div className="border-t border-slate-200/80 p-3">
