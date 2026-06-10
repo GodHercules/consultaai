@@ -35,8 +35,13 @@ function parseSort(value: string | string[] | undefined): SortKey {
   return "recent";
 }
 
-function buildWhere(q: string, status: SearchStatus): Prisma.CompanyWhereInput | undefined {
+function parseText(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : "";
+}
+
+function buildWhere(q: string, status: SearchStatus, municipio: string): Prisma.CompanyWhereInput | undefined {
   const text = q.trim();
+  const city = municipio.trim();
   const clauses: Prisma.CompanyWhereInput[] = [];
 
   if (text) {
@@ -46,12 +51,13 @@ function buildWhere(q: string, status: SearchStatus): Prisma.CompanyWhereInput |
         { razaoSocial: { contains: text, mode: "insensitive" } },
         { nomeFantasia: { contains: text, mode: "insensitive" } },
         { codigoInterno: { contains: text, mode: "insensitive" } },
-        { municipio: { contains: text, mode: "insensitive" } },
         { regimeTributario: { contains: text, mode: "insensitive" } },
         ...(digits ? [{ cnpjNumerico: { startsWith: digits } }] : []),
       ],
     });
   }
+
+  if (city) clauses.push({ municipio: { contains: city, mode: "insensitive" } });
 
   if (status === "active") clauses.push({ ativo: true });
   if (status === "inactive") clauses.push({ ativo: false });
@@ -61,10 +67,11 @@ function buildWhere(q: string, status: SearchStatus): Prisma.CompanyWhereInput |
   return { AND: clauses };
 }
 
-function buildHref(base: { q: string; status: SearchStatus; sort: SortKey; page: number }) {
+function buildHref(base: { q: string; status: SearchStatus; municipio: string; sort: SortKey; page: number }) {
   const params = new URLSearchParams();
   if (base.q.trim()) params.set("q", base.q.trim());
   if (base.status !== "all") params.set("status", base.status);
+  if (base.municipio.trim()) params.set("municipio", base.municipio.trim());
   if (base.sort !== "recent") params.set("sort", base.sort);
   if (base.page > 1) params.set("page", String(base.page));
   const query = params.toString();
@@ -88,12 +95,13 @@ export default async function CompanyContractsPage(props: {
 
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
+  const municipio = parseText(sp.municipio);
   const status = parseStatus(sp.status);
   const sort = parseSort(sp.sort);
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1"));
   const pageSize = 24;
 
-  const where = buildWhere(q, status);
+  const where = buildWhere(q, status, municipio);
 
   const [total, rawItems] = await Promise.all([
     prisma.company.count({ where }),
@@ -162,7 +170,7 @@ export default async function CompanyContractsPage(props: {
             <form
               action="/companies/contracts"
               method="get"
-              className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_180px_auto] xl:items-end"
+              className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_180px_180px_auto] xl:items-end"
             >
               <input type="hidden" name="status" value={status} />
               <input type="hidden" name="page" value="1" />
@@ -189,6 +197,13 @@ export default async function CompanyContractsPage(props: {
                 </select>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="municipio">
+                  Município
+                </label>
+                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
+              </div>
+
               <Button type="submit" className="w-full xl:w-auto">
                 <SearchIcon className="size-4" />
                 Aplicar
@@ -202,7 +217,7 @@ export default async function CompanyContractsPage(props: {
                 variant={status === "all" ? "default" : "outline"}
                 className={cn("rounded-full", status !== "all" && "bg-background/70")}
               >
-                <Link href={buildHref({ q, status: "all", sort, page: 1 })}>Todas</Link>
+                <Link href={buildHref({ q, status: "all", municipio, sort, page: 1 })}>Todas</Link>
               </Button>
               <Button
                 asChild
@@ -210,7 +225,7 @@ export default async function CompanyContractsPage(props: {
                 variant={status === "active" ? "default" : "outline"}
                 className={cn("rounded-full", status !== "active" && "bg-background/70")}
               >
-                <Link href={buildHref({ q, status: "active", sort, page: 1 })}>Ativas</Link>
+                <Link href={buildHref({ q, status: "active", municipio, sort, page: 1 })}>Ativas</Link>
               </Button>
               <Button
                 asChild
@@ -218,7 +233,7 @@ export default async function CompanyContractsPage(props: {
                 variant={status === "inactive" ? "default" : "outline"}
                 className={cn("rounded-full", status !== "inactive" && "bg-background/70")}
               >
-                <Link href={buildHref({ q, status: "inactive", sort, page: 1 })}>Inativas</Link>
+                <Link href={buildHref({ q, status: "inactive", municipio, sort, page: 1 })}>Inativas</Link>
               </Button>
             </div>
           </div>
@@ -316,7 +331,7 @@ export default async function CompanyContractsPage(props: {
             </div>
             <div className="flex items-center justify-between gap-3">
               <Link
-                href={buildHref({ q, status, sort, page: Math.max(1, currentPage - 1) })}
+                href={buildHref({ q, status, municipio, sort, page: Math.max(1, currentPage - 1) })}
                 aria-disabled={currentPage <= 1}
                 className={
                   currentPage <= 1
@@ -327,7 +342,7 @@ export default async function CompanyContractsPage(props: {
                 Anterior
               </Link>
               <Link
-                href={buildHref({ q, status, sort, page: Math.min(totalPages, currentPage + 1) })}
+                href={buildHref({ q, status, municipio, sort, page: Math.min(totalPages, currentPage + 1) })}
                 aria-disabled={currentPage >= totalPages}
                 className={
                   currentPage >= totalPages

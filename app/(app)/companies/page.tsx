@@ -22,8 +22,13 @@ function parseStatus(value: string | string[] | undefined): SearchStatus {
   return "all";
 }
 
-function buildSearchWhere(q: string, status: SearchStatus): Prisma.CompanyWhereInput | null {
+function parseText(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : "";
+}
+
+function buildSearchWhere(q: string, status: SearchStatus, municipio: string): Prisma.CompanyWhereInput | null {
   const text = q.trim();
+  const city = municipio.trim();
   const clauses: Prisma.CompanyWhereInput[] = [];
 
   if (text) {
@@ -33,11 +38,14 @@ function buildSearchWhere(q: string, status: SearchStatus): Prisma.CompanyWhereI
         { razaoSocial: { contains: text, mode: "insensitive" } },
         { nomeFantasia: { contains: text, mode: "insensitive" } },
         { codigoInterno: { contains: text, mode: "insensitive" } },
-        { municipio: { contains: text, mode: "insensitive" } },
         { regimeTributario: { contains: text, mode: "insensitive" } },
         ...(digits ? [{ cnpjNumerico: { startsWith: digits } }] : []),
       ],
     });
+  }
+
+  if (city) {
+    clauses.push({ municipio: { contains: city, mode: "insensitive" } });
   }
 
   if (status === "active") clauses.push({ ativo: true });
@@ -48,10 +56,11 @@ function buildSearchWhere(q: string, status: SearchStatus): Prisma.CompanyWhereI
   return { AND: clauses };
 }
 
-function buildHref(base: { q: string; status: SearchStatus; page: number }) {
+function buildHref(base: { q: string; status: SearchStatus; municipio: string; page: number }) {
   const params = new URLSearchParams();
   if (base.q.trim()) params.set("q", base.q.trim());
   if (base.status !== "all") params.set("status", base.status);
+  if (base.municipio.trim()) params.set("municipio", base.municipio.trim());
   if (base.page > 1) params.set("page", String(base.page));
   const query = params.toString();
   return query ? `/companies?${query}` : "/companies";
@@ -65,11 +74,12 @@ export default async function CompaniesPage(props: {
 
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
+  const municipio = parseText(sp.municipio);
   const status = parseStatus(sp.status);
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1"));
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
-  const where = buildSearchWhere(q, status);
+  const where = buildSearchWhere(q, status, municipio);
   const hasSearch = Boolean(where);
   let activeCompaniesCount = 0;
   let inactiveCompaniesCount = 0;
@@ -213,7 +223,7 @@ export default async function CompaniesPage(props: {
           </CardHeader>
           <CardContent>
             <form
-              className="grid gap-3 md:grid-cols-[minmax(0,1.1fr)_180px_auto] md:items-end xl:grid-cols-[minmax(0,1.25fr)_180px_auto]"
+              className="grid gap-3 md:grid-cols-[minmax(0,1.1fr)_180px_180px_auto] md:items-end xl:grid-cols-[minmax(0,1.25fr)_180px_180px_auto]"
               action="/companies"
               method="get"
             >
@@ -237,6 +247,12 @@ export default async function CompaniesPage(props: {
                   <option value="active">Ativas</option>
                   <option value="inactive">Inativas</option>
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="municipio">
+                  Município
+                </label>
+                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
               </div>
               <Button type="submit" className="w-full md:w-auto">
                 <SearchIcon className="size-4" />
@@ -341,7 +357,7 @@ export default async function CompaniesPage(props: {
             {hasSearch ? (
               <div className="flex items-center justify-between pt-2 text-sm">
                 <Link
-                  href={buildHref({ q, status, page: Math.max(1, page - 1) })}
+                  href={buildHref({ q, status, municipio, page: Math.max(1, page - 1) })}
                   aria-disabled={page <= 1}
                   className={
                     page <= 1
@@ -355,7 +371,7 @@ export default async function CompaniesPage(props: {
                   Página {page} de {totalPages}
                 </div>
                 <Link
-                  href={buildHref({ q, status, page: Math.min(totalPages, page + 1) })}
+                  href={buildHref({ q, status, municipio, page: Math.min(totalPages, page + 1) })}
                   aria-disabled={page >= totalPages}
                   className={
                     page >= totalPages
