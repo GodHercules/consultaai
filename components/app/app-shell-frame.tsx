@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import type { Department, Role } from "@prisma/client";
 import { MobileNav } from "@/components/app/mobile-nav";
@@ -44,15 +44,7 @@ export function AppShellFrame(props: {
 }) {
   const pinnedOpen = useSyncExternalStore(subscribeSidebar, getSidebarPinnedOpen, () => false);
   const sidebarCollapsed = !pinnedOpen;
-  const mainClassName = useMemo(
-    () =>
-      [
-        "relative min-w-0 pb-6 animate-glass-rise",
-        "lg:pt-6",
-        "transition-[grid-template-columns] duration-300",
-      ].join(" "),
-    []
-  );
+  const mainClassName = "relative min-w-0 pb-6 animate-glass-rise lg:px-6 lg:pt-6 xl:px-8 2xl:px-10";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950">
@@ -96,19 +88,19 @@ export function AppShellFrame(props: {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1840px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 xl:px-10 2xl:px-12 lg:grid-cols-[minmax(5.5rem,19rem)_minmax(0,1fr)] lg:gap-6 lg:py-8">
+      <div className="grid w-full grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(4.75rem,18rem)_minmax(0,1fr)] lg:gap-5 lg:px-0 lg:py-6 xl:gap-6 xl:py-8">
         <aside className="hidden lg:block">
           <div className="sticky top-24 h-[calc(100dvh-7rem)]">
             <SideNav
-            role={props.role}
-            department={props.department}
-            variant="desktop"
-            collapsed={sidebarCollapsed}
-            pinned={pinnedOpen}
-            onTogglePinned={() => setSidebarPinnedOpen(!pinnedOpen)}
-          />
-        </div>
-      </aside>
+              role={props.role}
+              department={props.department}
+              variant="desktop"
+              collapsed={sidebarCollapsed}
+              pinned={pinnedOpen}
+              onTogglePinned={() => setSidebarPinnedOpen(!pinnedOpen)}
+            />
+          </div>
+        </aside>
 
         <main className={mainClassName}>{props.children}</main>
       </div>
