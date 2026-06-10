@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { Department, Role } from "@prisma/client";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { MobileNav } from "@/components/app/mobile-nav";
 import { SideNav } from "@/components/app/side-nav";
 import { UserMenu } from "@/components/app/user-menu";
-import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "central-clientes.sidebarPinnedOpen";
 
@@ -42,17 +40,9 @@ export function AppShellFrame(props: {
   }, [pinnedOpen]);
 
   const expanded = pinnedOpen || hovered;
-  const sidebarWidth = expanded ? "22rem" : "6.75rem";
-
-  const shellStyle = {
-    ["--shell-sidebar-width"]: sidebarWidth,
-  } as CSSProperties & Record<string, string>;
 
   return (
-    <div
-      className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950"
-      style={shellStyle}
-    >
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,rgba(148,163,184,0.08),transparent_18%),radial-gradient(circle_at_88%_10%,rgba(148,163,184,0.06),transparent_18%)]"
@@ -94,42 +84,30 @@ export function AppShellFrame(props: {
       </header>
 
       <aside
-        className="fixed inset-y-20 left-0 z-30 hidden lg:block"
+        className="fixed left-4 top-24 bottom-4 z-30 hidden lg:block"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        <div className="h-full px-4 py-6">
-          <div
-            className={cn(
-              "h-full overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)] transition-[width] duration-300 ease-out",
-              "w-[var(--shell-sidebar-width)]"
-            )}
-          >
-            <SideNav
-              role={props.role}
-              department={props.department}
-              variant="desktop"
-              collapsed={!expanded}
-              pinned={pinnedOpen}
-              onTogglePinned={() => setPinnedOpen((value) => !value)}
-            />
-          </div>
+        <div
+          className={[
+            "h-full overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)] transition-[width] duration-300 ease-out",
+            expanded ? "w-[19rem]" : "w-[4.75rem]",
+          ].join(" ")}
+        >
+          <SideNav
+            role={props.role}
+            department={props.department}
+            variant="desktop"
+            collapsed={!expanded}
+            pinned={pinnedOpen}
+            onTogglePinned={() => setPinnedOpen((value) => !value)}
+          />
         </div>
       </aside>
 
-      <main className="relative min-w-0 pb-6 animate-glass-rise transition-[padding-left] duration-300 lg:pl-[calc(var(--shell-sidebar-width)+1.5rem)] lg:pr-6 lg:pt-6">
+      <main className="relative min-w-0 pb-6 animate-glass-rise transition-[padding-left] duration-300 lg:pl-[6rem] lg:pr-6 lg:pt-6">
         {props.children}
       </main>
-
-      <button
-        type="button"
-        className="fixed bottom-5 left-5 z-40 hidden items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.22)] backdrop-blur-xl transition hover:bg-white lg:inline-flex"
-        onClick={() => setPinnedOpen((value) => !value)}
-        aria-label={pinnedOpen ? "Recolher sidebar" : "Fixar sidebar"}
-      >
-        {pinnedOpen ? <ChevronLeftIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
-        {pinnedOpen ? "Sidebar fixa" : "Fixar sidebar"}
-      </button>
     </div>
   );
 }

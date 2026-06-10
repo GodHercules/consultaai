@@ -111,7 +111,7 @@ export default async function CompanyDetailPage(props: {
       <PageHeader
         kicker="Cadastro e contexto"
         title={displayName}
-        description={`${cnpjLabel} • CÓD ${codeLabel} • ${municipalityLabel}${groupLabel ? ` • Grupo ${groupLabel}` : ""}`}
+        description={`${cnpjLabel} • CÓD ${codeLabel} • ${municipalityLabel}${groupLabel ? ` • ${groupLabel}` : ""}`}
         breadcrumbs={[
           { label: "Consulta avançada", href: "/companies" },
           { label: displayName },
@@ -144,14 +144,14 @@ export default async function CompanyDetailPage(props: {
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card>
           <CardHeader>
             <CardDescription>Resumo cadastral</CardDescription>
             <CardTitle>Dados principais</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 sm:col-span-2 xl:col-span-3">
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Status cadastral</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge className={status.badgeClassName}>{status.label}</Badge>
