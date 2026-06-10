@@ -6,6 +6,7 @@ import type { Department, Role } from "@prisma/client";
 import { MobileNav } from "@/components/app/mobile-nav";
 import { SideNav } from "@/components/app/side-nav";
 import { UserMenu } from "@/components/app/user-menu";
+import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "central-clientes.sidebarPinnedOpen";
 const sidebarListeners = new Set<() => void>();
@@ -44,7 +45,7 @@ export function AppShellFrame(props: {
 }) {
   const pinnedOpen = useSyncExternalStore(subscribeSidebar, getSidebarPinnedOpen, () => false);
   const sidebarCollapsed = !pinnedOpen;
-  const mainClassName = "relative min-w-0 pb-6 animate-glass-rise lg:px-6 lg:pt-6 xl:px-8 2xl:px-10";
+  const mainClassName = "relative min-w-0 pb-6 animate-glass-rise lg:pt-6 lg:pr-6 xl:pr-8 2xl:pr-10";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950">
@@ -88,8 +89,13 @@ export function AppShellFrame(props: {
         </div>
       </header>
 
-      <div className="grid w-full grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(4.75rem,18rem)_minmax(0,1fr)] lg:gap-5 lg:px-0 lg:py-6 xl:gap-6 xl:py-8">
-        <aside className="hidden lg:block">
+      <div
+        className={cn(
+          "grid w-full grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:gap-4 lg:px-0 lg:py-6 xl:gap-5 xl:py-8",
+          pinnedOpen ? "lg:grid-cols-[18.5rem_minmax(0,1fr)]" : "lg:grid-cols-[5.75rem_minmax(0,1fr)]"
+        )}
+      >
+        <aside className="hidden w-full lg:block">
           <div className="sticky top-24 h-[calc(100dvh-7rem)]">
             <SideNav
               role={props.role}

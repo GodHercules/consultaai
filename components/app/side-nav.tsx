@@ -156,7 +156,7 @@ export function SideNav(props: {
 
   if (props.variant === "mobile") {
     return (
-      <nav className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
+      <nav className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
         <div className="border-b border-slate-200/80 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -192,7 +192,7 @@ export function SideNav(props: {
   }
 
   return (
-    <nav className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
+    <nav className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
       <div className="border-b border-slate-200/80 p-3">
         <div className={cn("flex items-center gap-2", compact ? "justify-center" : "justify-between")}>
           {compact ? (
