@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { auditLog } from "@/services/audit";
-import { hashPassword, validateNewPassword } from "@/services/auth/password";
+import { hashPassword, validateRegistrationPassword } from "@/services/auth/password";
 import { getClientIp } from "@/utils/request";
 
 export const runtime = "nodejs";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "PASSWORDS_DO_NOT_MATCH" }, { status: 400 });
   }
 
-  if (validateNewPassword(parsed.data.password)) {
+  if (validateRegistrationPassword(parsed.data.password)) {
     return Response.json({ error: "WEAK_PASSWORD" }, { status: 400 });
   }
 

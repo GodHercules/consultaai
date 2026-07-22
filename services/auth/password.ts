@@ -9,6 +9,16 @@ export async function verifyPassword(plain: string, passwordHash: string) {
   return bcrypt.compare(plain, passwordHash);
 }
 
+export function validateRegistrationPassword(password: string) {
+  if (password.length < 8 || /\s/.test(password)) {
+    return "A senha deve ter pelo menos 8 caracteres, com letras, números e um caractere especial.";
+  }
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    return "A senha deve ter pelo menos 8 caracteres, com letras, números e um caractere especial.";
+  }
+  return null;
+}
+
 function strengthLabel(level: PasswordStrength) {
   switch (level) {
     case "strong":

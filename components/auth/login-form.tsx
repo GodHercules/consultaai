@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, ArrowRightIcon, KeyRoundIcon, LockIcon, MailIcon, ShieldCheckIcon, UserRoundIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, LockIcon, MailIcon, ShieldCheckIcon, UserRoundIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,9 +34,19 @@ export function LoginForm(props: { next?: string | null; error?: string | null; 
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registeringRequest, setRegisteringRequest] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [password, setPassword] = useState("");
   const action = new URLSearchParams();
   action.set("redirect", "1");
   if (props.next) action.set("next", props.next);
+
+  const passwordRequirements = {
+    length: password.length >= 8,
+    letter: /[A-Za-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
 
   return (
     <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.24)] backdrop-blur-xl">
@@ -148,22 +158,51 @@ export function LoginForm(props: { next?: string | null; error?: string | null; 
             <div className="relative">
               <LockIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <Input
+                key={registering ? "register-password" : "login-password"}
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete={registering ? "new-password" : "current-password"}
                 required
+                minLength={registering ? 8 : undefined}
+                pattern={registering ? "(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9])\\S{8,}" : undefined}
+                value={registering ? password : undefined}
+                onChange={registering ? (event) => setPassword(event.target.value) : undefined}
                 placeholder="••••••••••••"
-                className="h-12 rounded-[1rem] border-slate-200 bg-slate-50 pl-11 text-slate-900 placeholder:text-slate-400 shadow-none focus-visible:bg-white"
+                className="h-12 rounded-[1rem] border-slate-200 bg-slate-50 pl-11 pr-12 text-slate-900 placeholder:text-slate-400 shadow-none focus-visible:bg-white"
               />
+              <button
+                type="button"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+              >
+                {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </button>
             </div>
           </div>
+
+          {registering ? <div className="-mt-2 rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600">
+            <p className="font-medium text-slate-700">Sua senha precisa ter:</p>
+            <p className={passwordRequirements.length ? "text-emerald-700" : ""}>• No mínimo 8 caracteres</p>
+            <p className={passwordRequirements.letter ? "text-emerald-700" : ""}>• Pelo menos uma letra</p>
+            <p className={passwordRequirements.number ? "text-emerald-700" : ""}>• Pelo menos um número</p>
+            <p className={passwordRequirements.special ? "text-emerald-700" : ""}>• Pelo menos um caractere especial</p>
+          </div> : null}
 
           {registering ? <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-slate-500">Confirmar senha</Label>
             <div className="relative">
               <LockIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required placeholder="Repita sua senha" className="h-12 rounded-[1rem] border-slate-200 bg-slate-50 pl-11 text-slate-900 placeholder:text-slate-400 shadow-none focus-visible:bg-white" />
+              <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" required placeholder="Repita sua senha" className="h-12 rounded-[1rem] border-slate-200 bg-slate-50 pl-11 pr-12 text-slate-900 placeholder:text-slate-400 shadow-none focus-visible:bg-white" />
+              <button
+                type="button"
+                aria-label={showConfirmPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
+                onClick={() => setShowConfirmPassword((visible) => !visible)}
+                className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+              >
+                {showConfirmPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </button>
             </div>
           </div> : null}
 
