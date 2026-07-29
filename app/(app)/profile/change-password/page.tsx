@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/services/auth/session";
+import { getBackendSession } from "@/lib/server-backend";
 import { ChangePasswordForm } from "@/components/profile/change-password-form";
 import { PageHeader } from "@/components/app/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChangePasswordPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession();
   if (!session) redirect("/login");
 
   return (

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import type { Department, Role } from "@prisma/client";
+import type { Department, Role } from "@/types/roles";
 import { getBackendSession } from "@/lib/server-backend";
 import { AppShellFrame } from "@/components/app/app-shell-frame";
 

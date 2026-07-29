@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type FocusEvent, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
-import type { Department, Role } from "@prisma/client";
+import type { Department, Role } from "@/types/roles";
 import type { LucideIcon } from "lucide-react";
 import {
   ActivityIcon,

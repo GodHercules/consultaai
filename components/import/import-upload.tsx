@@ -9,7 +9,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ImportErrorPayload } from "@/services/import/errors";
+type ImportErrorPayload = {
+  code: "INVALID_FORM" | "FILE_REQUIRED" | "DATABASE_UNAVAILABLE" | "IMPORT_FAILED";
+  message: string;
+  correlationId: string;
+  stage?: string;
+  hint?: string;
+  details?: { prismaCode?: string; source?: string };
+};
 
 type ImportPreview = {
   fileName: string;

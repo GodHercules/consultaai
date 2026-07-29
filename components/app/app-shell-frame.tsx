@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
-import type { Department, Role } from "@prisma/client";
+import type { Department, Role } from "@/types/roles";
 import { MobileNav } from "@/components/app/mobile-nav";
 import { SideNav } from "@/components/app/side-nav";
 import { UserMenu } from "@/components/app/user-menu";

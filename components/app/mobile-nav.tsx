@@ -1,7 +1,7 @@
 "use client";
 
 import { MenuIcon } from "lucide-react";
-import type { Department, Role } from "@prisma/client";
+import type { Department, Role } from "@/types/roles";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,

@@ -7,7 +7,8 @@ import { ArrowLeftIcon, ArrowRightIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, LockI
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TEST_ADMIN_DISPLAY_EMAIL } from "@/services/auth/testAdmin";
+
+const TEST_ADMIN_DISPLAY_EMAIL = "teste.admin@local.com";
 
 function messageForError(error?: string | null) {
   switch (error) {

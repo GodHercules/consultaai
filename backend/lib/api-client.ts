@@ -1,9 +1,8 @@
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "") ?? "";
-const useDirectApi = process.env.NEXT_PUBLIC_API_DIRECT === "true";
 
 export function apiUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return useDirectApi && configuredApiUrl ? `${configuredApiUrl}${normalizedPath}` : normalizedPath;
+  return `${configuredApiUrl}${normalizedPath}`;
 }
 
 export function apiFetch(input: string, init: RequestInit = {}) {
