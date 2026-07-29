@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { PrismaClient, Role } from "@prisma/client";
+import { normalizePostgresConnectionString } from "@/lib/database-url";
 
 function prismaClientOptions() {
   const url = process.env.DATABASE_URL;
@@ -23,7 +24,7 @@ function prismaClientOptions() {
 
   if (isPostgresDirect) {
     return {
-      adapter: new PrismaPg({ connectionString: url }),
+      adapter: new PrismaPg({ connectionString: normalizePostgresConnectionString(url) }),
     } as ConstructorParameters<typeof PrismaClient>[0];
   }
 
