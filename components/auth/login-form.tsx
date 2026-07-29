@@ -96,7 +96,7 @@ export function LoginForm(props: { next?: string | null; error?: string | null; 
         ) : null}
 
         <form
-          method={registering ? "post" : undefined}
+          method="post"
           action={registering ? undefined : apiUrl(`/api/auth/login?${action.toString()}`)}
           onSubmit={registering ? async (event) => {
             event.preventDefault();
