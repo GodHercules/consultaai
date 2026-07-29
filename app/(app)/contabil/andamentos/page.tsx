@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { AndamentosPanel } from "@/components/contabil/andamentos-panel";
 import { PageHeader } from "@/components/app/page-header";
 import { formatCnpjDisplay } from "@/utils/cnpj";
@@ -8,11 +7,11 @@ import { formatCnpjDisplay } from "@/utils/cnpj";
 export const dynamic = "force-dynamic";
 
 export default async function AndamentosContabilPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { id?: string; role?: string; department?: string | null } | null;
   if (!session) redirect("/login");
 
   const allowed =
-    session.user.role === "ADMIN" || session.user.department === "CONTABIL";
+    session.role === "ADMIN" || session.department === "CONTABIL";
   if (!allowed) redirect("/companies");
 
   let companies: Array<{ id: string; razaoSocial: string | null; nomeFantasia: string | null; cnpjNumerico: string | null }> = [];
@@ -31,28 +30,8 @@ export default async function AndamentosContabilPage() {
 
   try {
     [companies, items] = await Promise.all([
-      prisma.company.findMany({
-        where: { ativo: true },
-        orderBy: [{ razaoSocial: "asc" }],
-        take: 200,
-        select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjNumerico: true },
-      }),
-      prisma.companyProgress.findMany({
-        where: { createdByUserId: session.user.id },
-        orderBy: [{ createdAt: "desc" }],
-        take: 50,
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          notes: true,
-          createdAt: true,
-          company: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjNumerico: true } },
-          createdByUser: { select: { id: true, name: true, email: true } },
-        },
-      }),
+      backendFetch("/api/companies?ativo=true&page=1&pageSize=200").then(async (response) => (await response.json()).items ?? []),
+      backendFetch("/api/company-progress?take=50").then(async (response) => (await response.json()).items ?? []),
     ]);
   } catch {
     dataUnavailable = true;
@@ -77,9 +56,9 @@ export default async function AndamentosContabilPage() {
         }))}
           initialItems={items.map((i) => ({
             ...i,
-            createdAt: i.createdAt.toISOString(),
-            startDate: i.startDate.toISOString(),
-            endDate: i.endDate.toISOString(),
+            createdAt: new Date(i.createdAt).toISOString(),
+            startDate: new Date(i.startDate).toISOString(),
+            endDate: new Date(i.endDate).toISOString(),
           }))}
         />
       {dataUnavailable ? (

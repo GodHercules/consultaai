@@ -1,21 +1,23 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { CompanyStatusForm } from "@/components/companies/company-status-form";
 import { PageHeader } from "@/components/app/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompanyStatusPage(props: { params: Promise<{ id: string }> }) {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   const { id } = await props.params;
   let company: { id: string; ativo: boolean } | null = null;
 
   try {
-    company = await prisma.company.findUnique({ where: { id }, select: { id: true, ativo: true } });
+    const response = await backendFetch(`/api/companies/${id}`);
+    if (!response.ok) throw new Error("company unavailable");
+    const data = await response.json() as { company?: { id: string; ativo: boolean } };
+    company = data.company ?? null;
   } catch {
     company = null;
   }

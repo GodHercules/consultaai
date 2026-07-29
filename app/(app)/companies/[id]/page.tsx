@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeftIcon, Edit3Icon, ShieldAlertIcon } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +31,7 @@ function statusMeta(ativo: boolean) {
 export default async function CompanyDetailPage(props: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
 
   const { id } = await props.params;
@@ -59,7 +58,10 @@ export default async function CompanyDetailPage(props: {
   } | null = null;
 
   try {
-    company = await prisma.company.findUnique({ where: { id } });
+    const response = await backendFetch(`/api/companies/${id}`);
+    if (!response.ok) throw new Error("company unavailable");
+    const data = await response.json() as { company?: typeof company };
+    company = data.company ?? null;
   } catch {
     company = null;
   }
@@ -124,7 +126,7 @@ export default async function CompanyDetailPage(props: {
                 Voltar
               </Link>
             </Button>
-            {session.user.role === "ADMIN" ? (
+            {session.role === "ADMIN" ? (
               <>
                 <Button asChild>
                   <Link href={`/companies/${company.id}/edit`}>
@@ -245,7 +247,7 @@ export default async function CompanyDetailPage(props: {
             </Card>
           ) : null}
 
-          {session.user.role === "ADMIN" ? (
+          {session.role === "ADMIN" ? (
             <Card>
               <CardHeader>
                 <CardDescription>Administração</CardDescription>

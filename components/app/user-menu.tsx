@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { ChevronDownIcon, LogOutIcon, UserCircle2Icon } from "lucide-react";
 import {
@@ -16,7 +17,7 @@ export function UserMenu(props: { name: string; email: string }) {
   const router = useRouter();
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await apiFetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
     router.refresh();
   }

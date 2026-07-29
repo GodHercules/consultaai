@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { Prisma } from "@prisma/client";
 import { SearchIcon } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +15,17 @@ export const dynamic = "force-dynamic";
 
 type SearchStatus = "all" | "active" | "inactive";
 type SortKey = "recent" | "name";
+type CompanyRow = {
+  id: string;
+  razaoSocial: string | null;
+  nomeFantasia: string | null;
+  codigoInterno: string | null;
+  ativo: boolean;
+  importWarning: string | null;
+  cnpjNumerico: string;
+  municipio: string | null;
+  regimeTributario: string | null;
+};
 
 const sortLabels: Record<SortKey, string> = {
   recent: "Mais recentes",
@@ -39,34 +48,6 @@ function parseText(value: string | string[] | undefined) {
   return typeof value === "string" ? value : "";
 }
 
-function buildWhere(q: string, status: SearchStatus, municipio: string): Prisma.CompanyWhereInput | undefined {
-  const text = q.trim();
-  const city = municipio.trim();
-  const clauses: Prisma.CompanyWhereInput[] = [];
-
-  if (text) {
-    const digits = text.replace(/\D+/g, "");
-    clauses.push({
-      OR: [
-        { razaoSocial: { contains: text, mode: "insensitive" } },
-        { nomeFantasia: { contains: text, mode: "insensitive" } },
-        { codigoInterno: { contains: text, mode: "insensitive" } },
-        { regimeTributario: { contains: text, mode: "insensitive" } },
-        ...(digits ? [{ cnpjNumerico: { startsWith: digits } }] : []),
-      ],
-    });
-  }
-
-  if (city) clauses.push({ municipio: { contains: city, mode: "insensitive" } });
-
-  if (status === "active") clauses.push({ ativo: true });
-  if (status === "inactive") clauses.push({ ativo: false });
-
-  if (!clauses.length) return undefined;
-  if (clauses.length === 1) return clauses[0];
-  return { AND: clauses };
-}
-
 function buildHref(base: { q: string; status: SearchStatus; municipio: string; sort: SortKey; page: number }) {
   const params = new URLSearchParams();
   if (base.q.trim()) params.set("q", base.q.trim());
@@ -78,19 +59,10 @@ function buildHref(base: { q: string; status: SearchStatus; municipio: string; s
   return query ? `/companies/contracts?${query}` : "/companies/contracts";
 }
 
-function compareCompanyName(
-  a: { razaoSocial: string | null; nomeFantasia: string | null },
-  b: { razaoSocial: string | null; nomeFantasia: string | null },
-) {
-  return (a.razaoSocial || a.nomeFantasia || "").localeCompare(b.razaoSocial || b.nomeFantasia || "", "pt-BR", {
-    sensitivity: "base",
-  });
-}
-
 export default async function CompanyContractsPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
 
   const sp = await props.searchParams;
@@ -101,37 +73,18 @@ export default async function CompanyContractsPage(props: {
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1"));
   const pageSize = 24;
 
-  const where = buildWhere(q, status, municipio);
-
-  const [total, rawItems] = await Promise.all([
-    prisma.company.count({ where }),
-    prisma.company.findMany({
-      where,
-      select: {
-        id: true,
-        razaoSocial: true,
-        nomeFantasia: true,
-        codigoInterno: true,
-        cnpjNumerico: true,
-        municipio: true,
-        regimeTributario: true,
-        ativo: true,
-        importWarning: true,
-        updatedAt: true,
-      },
-    }),
-  ]);
-
-  const sortedItems = [...rawItems].sort((a, b) => {
-    if (sort === "name") return compareCompanyName(a, b);
-    const diff = b.updatedAt.getTime() - a.updatedAt.getTime();
-    return diff !== 0 ? diff : compareCompanyName(a, b);
-  });
-
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), sort });
+  if (q.trim()) params.set("q", q.trim());
+  if (municipio.trim()) params.set("municipio", municipio.trim());
+  if (status === "active") params.set("ativo", "true");
+  if (status === "inactive") params.set("ativo", "false");
+  const response = await backendFetch(`/api/companies?${params}`);
+  if (!response.ok) throw new Error("contracts unavailable");
+  const data = await response.json() as { total: number; items: CompanyRow[] };
+  const total = data.total;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const skip = (currentPage - 1) * pageSize;
-  const items = sortedItems.slice(skip, skip + pageSize);
+  const items = data.items;
 
   return (
     <div className="space-y-6">

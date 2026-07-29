@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api-client";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckIcon, CopyIcon, InfoIcon, LockIcon, ShieldIcon, SparklesIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -34,11 +35,7 @@ export function UserCreateForm() {
   const departmentEnabled = role === "ADMIN" && department !== "NONE";
   const canSubmit = name.trim().length > 1 && email.trim().length > 3;
 
-  useEffect(() => {
-    if (!departmentEnabled && isDepartmentLeader) {
-      setIsDepartmentLeader(false);
-    }
-  }, [departmentEnabled, isDepartmentLeader]);
+  const effectiveIsDepartmentLeader = departmentEnabled && isDepartmentLeader;
 
   const helperText = useMemo(() => {
     if (role !== "ADMIN") {
@@ -66,7 +63,7 @@ export function UserCreateForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await apiFetch("/api/admin/users", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -74,7 +71,7 @@ export function UserCreateForm() {
           email,
           role,
           department: department === "NONE" ? null : department,
-          isDepartmentLeader,
+          isDepartmentLeader: effectiveIsDepartmentLeader,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -188,7 +185,7 @@ export function UserCreateForm() {
                 <label className="inline-flex items-center gap-3 rounded-full border border-border/70 bg-background px-4 py-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={isDepartmentLeader}
+                    checked={effectiveIsDepartmentLeader}
                     disabled={!departmentEnabled}
                     onChange={(e) => setIsDepartmentLeader(e.target.checked)}
                     className="size-4 rounded border-border text-sky-600"

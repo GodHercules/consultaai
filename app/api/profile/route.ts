@@ -13,7 +13,18 @@ const schema = z.object({
 export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  return Response.json({ user: auth.session.user });
+  let departmentLeader: { name: string; email: string } | null = null;
+  if (auth.session.user.department) {
+    departmentLeader = await prisma.user.findFirst({
+      where: { role: "ADMIN", isActive: true, department: auth.session.user.department, isDepartmentLeader: true },
+      select: { name: true, email: true },
+    });
+  }
+  const { id, name, email, role, department, isDepartmentLeader, isActive, mustChangePassword } = auth.session.user;
+  return Response.json({
+    user: { id, name, email, role, department, isDepartmentLeader, isActive, mustChangePassword },
+    departmentLeader,
+  });
 }
 
 export async function PATCH(request: Request) {

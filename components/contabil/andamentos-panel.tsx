@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -43,7 +44,7 @@ export function AndamentosPanel(props: { companies: CompanyOption[]; initialItem
     if (!companyId) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/company-progress", {
+      const res = await apiFetch("/api/company-progress", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

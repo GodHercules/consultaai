@@ -9,6 +9,8 @@ export type CompanySearchParams = {
   codigoInterno?: string | null;
   sistema?: string | null;
   certificado?: string | null;
+  municipio?: string | null;
+  sort?: "recent" | "name";
   ativo?: boolean | null;
   page: number;
   pageSize: number;
@@ -28,6 +30,7 @@ export async function searchCompanies(params: CompanySearchParams) {
     ...(params.codigoInterno ? { codigoInterno: { contains: params.codigoInterno.trim(), mode: "insensitive" } } : {}),
     ...(params.sistema ? { sistema: { contains: params.sistema.trim(), mode: "insensitive" } } : {}),
     ...(params.certificado ? { certificado: { contains: params.certificado.trim(), mode: "insensitive" } } : {}),
+    ...(params.municipio ? { municipio: { contains: params.municipio.trim(), mode: "insensitive" } } : {}),
     ...(params.regimeTributario ? { regimeTributario: { contains: params.regimeTributario.trim(), mode: "insensitive" } } : {}),
     ...(grupoNorm ? { grupoNormalizado: { contains: grupoNorm } } : {}),
   };
@@ -57,7 +60,9 @@ export async function searchCompanies(params: CompanySearchParams) {
     prisma.company.count({ where }),
     prisma.company.findMany({
       where,
-      orderBy: [{ ativo: "desc" }, { razaoSocial: "asc" }],
+      orderBy: params.sort === "name"
+        ? [{ ativo: "desc" }, { razaoSocial: "asc" }]
+        : [{ ativo: "desc" }, { updatedAt: "desc" }],
       skip,
       take: pageSize,
       select: {
@@ -73,6 +78,8 @@ export async function searchCompanies(params: CompanySearchParams) {
         certificado: true,
         ativo: true,
         updatedAt: true,
+        observacao: true,
+        importWarning: true,
       },
     }),
   ]);

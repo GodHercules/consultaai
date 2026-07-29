@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: consultaai-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_JWT_SECRET
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: N8N_WEBHOOK_URL
+        sync: false
+      - key: FUNDARMF_WEBHOOK_SECRET
+        sync: false

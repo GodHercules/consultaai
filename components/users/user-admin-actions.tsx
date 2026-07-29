@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api-client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -25,16 +26,12 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
 
   const departmentEnabled = role === "ADMIN" && department !== "NONE";
 
-  useEffect(() => {
-    if (!departmentEnabled && isDepartmentLeader) {
-      setIsDepartmentLeader(false);
-    }
-  }, [departmentEnabled, isDepartmentLeader]);
+  const effectiveIsDepartmentLeader = departmentEnabled && isDepartmentLeader;
 
   async function createUser() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await apiFetch("/api/admin/users", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -42,7 +39,7 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
           email,
           role,
           department: department === "NONE" ? null : department,
-          isDepartmentLeader,
+          isDepartmentLeader: effectiveIsDepartmentLeader,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -62,7 +59,7 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
     if (!props?.userId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/users/${props.userId}`, {
+      const res = await apiFetch(`/api/admin/users/${props.userId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ isActive: !props.currentActive }),
@@ -83,7 +80,7 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
     if (!props?.userId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/users/${props.userId}/temp-password`, { method: "POST" });
+      const res = await apiFetch(`/api/admin/users/${props.userId}/temp-password`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error("Nao foi possivel resetar", { description: data?.error || "Tente novamente." });
@@ -171,7 +168,7 @@ export function UserAdminActions(props?: { userId?: string; currentActive?: bool
             <input
               type="checkbox"
               className="h-4 w-4"
-              checked={isDepartmentLeader}
+              checked={effectiveIsDepartmentLeader}
               disabled={!departmentEnabled}
               onChange={(e) => setIsDepartmentLeader(e.target.checked)}
               aria-label="Lider do setor"

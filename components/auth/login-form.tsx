@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch, apiUrl } from "@/lib/api-client";
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, LockIcon, MailIcon, ShieldCheckIcon, UserRoundIcon } from "lucide-react";
@@ -95,13 +96,13 @@ export function LoginForm(props: { next?: string | null; error?: string | null; 
 
         <form
           method={registering ? "post" : undefined}
-          action={registering ? undefined : `/api/auth/login?${action.toString()}`}
+          action={registering ? undefined : apiUrl(`/api/auth/login?${action.toString()}`)}
           onSubmit={registering ? async (event) => {
             event.preventDefault();
             setRegisteringRequest(true);
             setRegisterError(null);
             const formData = new FormData(event.currentTarget);
-            const response = await fetch("/api/auth/register", {
+            const response = await apiFetch("/api/auth/register", {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify(Object.fromEntries(formData.entries())),

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -48,7 +49,7 @@ export function FundarmfEventsTable(props: { items: FundarmfEventListItem[] }) {
   async function retryEvent(id: string) {
     setLoadingId(id);
     try {
-      const res = await fetch(`/api/admin/integrations/fundarmf/events/${id}/retry`, {
+      const res = await apiFetch(`/api/admin/integrations/fundarmf/events/${id}/retry`, {
         method: "POST",
       });
       const body = await res.json().catch(() => null);

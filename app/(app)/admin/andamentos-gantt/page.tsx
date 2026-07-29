@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AndamentosGantt } from "@/components/admin/andamentos-gantt";
 import { PageHeader } from "@/components/app/page-header";
@@ -18,27 +17,18 @@ type ProgressRow = {
 };
 
 export default async function AndamentosGanttPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   let items: ProgressRow[] = [];
   let dataUnavailable = false;
 
   try {
-    items = (await prisma.companyProgress.findMany({
-      orderBy: [{ endDate: "desc" }],
-      take: 300,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        company: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjNumerico: true } },
-        createdByUser: { select: { id: true, name: true, email: true } },
-      },
-    })) as ProgressRow[];
+    const response = await backendFetch("/api/company-progress?take=300");
+    if (!response.ok) throw new Error("progress unavailable");
+    const data = await response.json() as { items?: Array<Omit<ProgressRow, "startDate" | "endDate"> & { startDate: string; endDate: string }> };
+    items = (data.items ?? []).map((item) => ({ ...item, startDate: new Date(item.startDate), endDate: new Date(item.endDate) }));
   } catch {
     dataUnavailable = true;
   }

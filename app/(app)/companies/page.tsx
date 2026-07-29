@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CircleHelpIcon, PlusIcon, SearchIcon } from "lucide-react";
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,36 +24,6 @@ function parseText(value: string | string[] | undefined) {
   return typeof value === "string" ? value : "";
 }
 
-function buildSearchWhere(q: string, status: SearchStatus, municipio: string): Prisma.CompanyWhereInput | null {
-  const text = q.trim();
-  const city = municipio.trim();
-  const clauses: Prisma.CompanyWhereInput[] = [];
-
-  if (text) {
-    const digits = text.replace(/\D+/g, "");
-    clauses.push({
-      OR: [
-        { razaoSocial: { contains: text, mode: "insensitive" } },
-        { nomeFantasia: { contains: text, mode: "insensitive" } },
-        { codigoInterno: { contains: text, mode: "insensitive" } },
-        { regimeTributario: { contains: text, mode: "insensitive" } },
-        ...(digits ? [{ cnpjNumerico: { startsWith: digits } }] : []),
-      ],
-    });
-  }
-
-  if (city) {
-    clauses.push({ municipio: { contains: city, mode: "insensitive" } });
-  }
-
-  if (status === "active") clauses.push({ ativo: true });
-  if (status === "inactive") clauses.push({ ativo: false });
-
-  if (!clauses.length) return null;
-  if (clauses.length === 1) return clauses[0];
-  return { AND: clauses };
-}
-
 function buildHref(base: { q: string; status: SearchStatus; municipio: string; page: number }) {
   const params = new URLSearchParams();
   if (base.q.trim()) params.set("q", base.q.trim());
@@ -69,7 +37,7 @@ function buildHref(base: { q: string; status: SearchStatus; municipio: string; p
 export default async function CompaniesPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
 
   const sp = await props.searchParams;
@@ -78,9 +46,7 @@ export default async function CompaniesPage(props: {
   const status = parseStatus(sp.status);
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1"));
   const pageSize = 20;
-  const skip = (page - 1) * pageSize;
-  const where = buildSearchWhere(q, status, municipio);
-  const hasSearch = Boolean(where);
+  const hasSearch = Boolean(q.trim() || municipio.trim() || status !== "all");
   let activeCompaniesCount = 0;
   let inactiveCompaniesCount = 0;
   let warningCompaniesCount = 0;
@@ -99,34 +65,23 @@ export default async function CompaniesPage(props: {
   let dataUnavailable = false;
 
   try {
-    [activeCompaniesCount, inactiveCompaniesCount, warningCompaniesCount] = await Promise.all([
-      prisma.company.count({ where: { ativo: true } }),
-      prisma.company.count({ where: { ativo: false } }),
-      prisma.company.count({ where: { importWarning: { not: null } } }),
-    ]);
-
-    if (where) {
-      [total, items] = await Promise.all([
-        prisma.company.count({ where }),
-        prisma.company.findMany({
-          where,
-          orderBy: [{ ativo: "desc" }, { razaoSocial: "asc" }],
-          skip,
-          take: pageSize,
-          select: {
-            id: true,
-            razaoSocial: true,
-            nomeFantasia: true,
-            codigoInterno: true,
-            cnpjNumerico: true,
-            municipio: true,
-            regimeTributario: true,
-            ativo: true,
-            importWarning: true,
-          },
-        }),
-      ]);
-    }
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (q.trim()) params.set("q", q.trim());
+    if (municipio.trim()) params.set("municipio", municipio.trim());
+    if (status === "active") params.set("ativo", "true");
+    if (status === "inactive") params.set("ativo", "false");
+    const response = await backendFetch(`/api/companies?${params.toString()}`);
+    if (!response.ok) throw new Error("companies unavailable");
+    const data = await response.json() as {
+      total?: number;
+      items?: typeof items;
+      summary?: { activeCount?: number; inactiveCount?: number; warningCount?: number };
+    };
+    total = data.total ?? 0;
+    items = data.items ?? [];
+    activeCompaniesCount = data.summary?.activeCount ?? 0;
+    inactiveCompaniesCount = data.summary?.inactiveCount ?? 0;
+    warningCompaniesCount = data.summary?.warningCount ?? 0;
   } catch {
     dataUnavailable = true;
   }
@@ -148,7 +103,7 @@ export default async function CompaniesPage(props: {
           description="Busque por CNPJ, razão social, fantasia, código interno, município, regime ou status. A interface foi desenhada para reduzir a fricção na leitura da base."
           actions={
             <>
-              {session.user.role === "ADMIN" ? (
+              {session.role === "ADMIN" ? (
                 <Button asChild>
                   <Link href="/companies/new">
                     <PlusIcon className="size-4" />
@@ -430,7 +385,7 @@ export default async function CompaniesPage(props: {
             <CardTitle>Ações diretas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {session.user.role === "ADMIN" ? (
+            {session.role === "ADMIN" ? (
               <Button asChild variant="outline" className="w-full justify-between">
                 <Link href="/import">
                   Importar planilha

@@ -12,11 +12,15 @@ export async function GET() {
     companiesActive,
     companiesInactive,
     usersActive,
+    usersTotal,
+    pendingCompanies,
     lastImports,
   ] = await Promise.all([
     prisma.company.count({ where: { ativo: true } }),
     prisma.company.count({ where: { ativo: false } }),
     prisma.user.count({ where: { isActive: true } }),
+    prisma.user.count(),
+    prisma.pendingCompany.count({ where: { status: "PENDING" } }),
     prisma.importHistory.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -28,6 +32,8 @@ export async function GET() {
     companiesActive,
     companiesInactive,
     usersActive,
+    usersTotal,
+    pendingCompanies,
     lastImports,
   });
 }

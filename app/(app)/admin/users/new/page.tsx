@@ -4,15 +4,15 @@ import { ArrowLeftIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSessionUser } from "@/services/auth/session";
+import { getBackendSession } from "@/lib/server-backend";
 import { UserCreateForm } from "@/components/users/user-create-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewUserPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if ((session as { role?: string }).role !== "ADMIN") redirect("/companies");
 
   return (
     <div className="space-y-6">

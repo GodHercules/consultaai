@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PendingCompaniesTable } from "@/components/admin/pending-companies-table";
 import { PageHeader } from "@/components/app/page-header";
@@ -8,9 +7,9 @@ import { PageHeader } from "@/components/app/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function PendingCompaniesPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   let items: Array<{
     id: string;
@@ -27,23 +26,10 @@ export default async function PendingCompaniesPage() {
   let dataUnavailable = false;
 
   try {
-    items = await prisma.pendingCompany.findMany({
-      where: { status: "PENDING" },
-      orderBy: { receivedAt: "desc" },
-      take: 50,
-      select: {
-        id: true,
-        source: true,
-        status: true,
-        receivedAt: true,
-        razaoSocial: true,
-        nomeFantasia: true,
-        cnpjNumerico: true,
-        codigoInterno: true,
-        grupo: true,
-        sistema: true,
-      },
-    });
+    const response = await backendFetch("/api/admin/pending-companies?status=PENDING&take=50");
+    if (!response.ok) throw new Error("pending companies unavailable");
+    const data = await response.json() as { items?: typeof items };
+    items = (data.items ?? []).map((item) => ({ ...item, receivedAt: new Date(item.receivedAt) }));
   } catch {
     dataUnavailable = true;
   }

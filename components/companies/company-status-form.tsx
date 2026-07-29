@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ export function CompanyStatusForm(props: { companyId: string; ativo: boolean }) 
   async function submit() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/companies/${props.companyId}/status`, {
+      const res = await apiFetch(`/api/companies/${props.companyId}/status`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ativo: nextAtivo, motivo }),

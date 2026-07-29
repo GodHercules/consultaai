@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
@@ -158,7 +159,7 @@ export function ImportUpload() {
     }
 
     try {
-      const res = await fetch(`/api/admin/import${dryRun ? "?dryRun=1" : ""}`, {
+      const res = await apiFetch(`/api/admin/import${dryRun ? "?dryRun=1" : ""}`, {
         method: "POST",
         body: fd,
       });

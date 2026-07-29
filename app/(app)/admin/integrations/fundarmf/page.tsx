@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { Prisma } from "@prisma/client";
 import { FilterIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,46 +46,18 @@ function buildHref(base: { q: string; status: SearchStatus; page: number }) {
   return query ? `/admin/integrations/fundarmf?${query}` : "/admin/integrations/fundarmf";
 }
 
-function buildWhere(q: string, status: SearchStatus): Prisma.IntegrationEventWhereInput {
-  const text = q.trim();
-  const filters: Prisma.IntegrationEventWhereInput[] = [{ source: "FundarMF" }];
-
-  if (text) {
-    const digits = text.replace(/\D+/g, "");
-    filters.push({
-      OR: [
-        { eventType: { contains: text, mode: "insensitive" } },
-        { deliveryId: { contains: text, mode: "insensitive" } },
-        { fundarmfCaseId: { contains: text, mode: "insensitive" } },
-        { companyCnpj: { contains: text, mode: "insensitive" } },
-        { errorMessage: { contains: text, mode: "insensitive" } },
-        ...(digits ? [{ companyCnpj: { startsWith: digits } }] : []),
-      ],
-    });
-  }
-
-  if (status !== "all") {
-    filters.push({ status });
-  }
-
-  if (filters.length === 1) return filters[0];
-  return { AND: filters };
-}
-
 export default async function FundarmfEventsPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
   const status = parseStatus(sp.status);
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
   const pageSize = 20;
-  const skip = (page - 1) * pageSize;
-  const where = buildWhere(q, status);
 
   let totalCount = 0;
   let receivedCount = 0;
@@ -111,44 +81,17 @@ export default async function FundarmfEventsPage(props: {
   let dataUnavailable = false;
 
   try {
-    const baseWhere = { source: "FundarMF" } satisfies Prisma.IntegrationEventWhereInput;
-    const [all, received, processing, processed, review, failed, duplicate, total, listItems] = await Promise.all([
-      prisma.integrationEvent.count({ where: baseWhere }),
-      prisma.integrationEvent.count({ where: { ...baseWhere, status: "RECEIVED" } }),
-      prisma.integrationEvent.count({ where: { ...baseWhere, status: "PROCESSING" } }),
-      prisma.integrationEvent.count({ where: { ...baseWhere, status: "PROCESSED" } }),
-      prisma.integrationEvent.count({ where: { ...baseWhere, status: "REVIEW_REQUIRED" } }),
-      prisma.integrationEvent.count({ where: { ...baseWhere, status: "FAILED" } }),
-      prisma.integrationEvent.count({ where: { ...baseWhere, status: "DUPLICATE" } }),
-      prisma.integrationEvent.count({ where }),
-      prisma.integrationEvent.findMany({
-        where,
-        orderBy: [{ createdAt: "desc" }],
-        skip,
-        take: pageSize,
-        select: {
-          id: true,
-          eventType: true,
-          deliveryId: true,
-          fundarmfCaseId: true,
-          companyCnpj: true,
-          status: true,
-          errorMessage: true,
-          createdAt: true,
-          processedAt: true,
-        },
-      }),
-    ]);
-
-    totalCount = all;
-    receivedCount = received;
-    processingCount = processing;
-    processedCount = processed;
-    reviewCount = review;
-    failedCount = failed;
-    duplicateCount = duplicate;
-    filteredTotal = total;
-    items = listItems;
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (q.trim()) params.set("q", q.trim());
+    if (status !== "all") params.set("status", status);
+    const response = await backendFetch(`/api/admin/integrations/fundarmf/events?${params}`);
+    if (!response.ok) throw new Error("events unavailable");
+    const data = await response.json();
+    totalCount = data.summary.received + data.summary.processing + data.summary.processed + data.summary.reviewRequired + data.summary.failed + data.summary.duplicate;
+    receivedCount = data.summary.received; processingCount = data.summary.processing; processedCount = data.summary.processed;
+    reviewCount = data.summary.reviewRequired; failedCount = data.summary.failed; duplicateCount = data.summary.duplicate;
+    filteredTotal = data.total ?? 0;
+    items = (data.items ?? []).map((item: typeof items[number] & { createdAt: string; processedAt: string | null }) => ({ ...item, createdAt: new Date(item.createdAt), processedAt: item.processedAt ? new Date(item.processedAt) : null }));
   } catch {
     dataUnavailable = true;
   }

@@ -10,8 +10,7 @@ import {
   SparklesIcon,
   UsersRoundIcon,
 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -76,40 +75,21 @@ function MetricBars(props: { percent: number; tone: "royal" | "sky" | "cobalt" |
 }
 
 export default async function DashboardPage() {
-  const session = await getSessionUser();
-  if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  const user = await getBackendSession() as { role?: string } | null;
+  if (!user) redirect("/login");
+  if (user.role !== "ADMIN") redirect("/companies");
 
-  const [companiesActiveResult, companiesInactiveResult, usersActiveResult, usersTotalResult, pendingCompaniesResult, lastImportsResult] =
-    await Promise.allSettled([
-      prisma.company.count({ where: { ativo: true } }),
-      prisma.company.count({ where: { ativo: false } }),
-      prisma.user.count({ where: { isActive: true } }),
-      prisma.user.count(),
-      prisma.pendingCompany.count({ where: { status: "PENDING" } }),
-          prisma.importHistory.findMany({
-            orderBy: { createdAt: "desc" },
-            take: 5,
-          select: {
-            id: true,
-            fileName: true,
-            total: true,
-            created: true,
-            updated: true,
-            ignored: true,
-            suspectedDuplicates: true,
-            status: true,
-            createdAt: true,
-          },
-        }),
-    ]);
-
-  const companiesActive = companiesActiveResult.status === "fulfilled" ? companiesActiveResult.value : 0;
-  const companiesInactive = companiesInactiveResult.status === "fulfilled" ? companiesInactiveResult.value : 0;
-  const usersActive = usersActiveResult.status === "fulfilled" ? usersActiveResult.value : 0;
-  const usersTotal = usersTotalResult.status === "fulfilled" ? usersTotalResult.value : Math.max(1, usersActive);
-  const pendingCompanies = pendingCompaniesResult.status === "fulfilled" ? pendingCompaniesResult.value : 0;
-  const lastImports = lastImportsResult.status === "fulfilled" ? lastImportsResult.value : [];
+  const response = await backendFetch("/api/admin/dashboard");
+  if (!response.ok) throw new Error("Não foi possível carregar o dashboard.");
+  const data = await response.json() as {
+    companiesActive: number;
+    companiesInactive: number;
+    usersActive: number;
+    usersTotal: number;
+    pendingCompanies: number;
+    lastImports: Array<{ id: string; fileName: string; total: number; created: number; updated: number; suspectedDuplicates?: number; status?: string | null; createdAt: string }>;
+  };
+  const { companiesActive, companiesInactive, usersActive, usersTotal, pendingCompanies, lastImports } = data;
 
   const companiesTotal = companiesActive + companiesInactive;
   const activeRatio = percent(companiesActive, companiesTotal);

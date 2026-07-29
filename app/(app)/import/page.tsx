@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/services/auth/session";
+import { getBackendSession } from "@/lib/server-backend";
 import { ImportUpload } from "@/components/import/import-upload";
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 export const dynamic = "force-dynamic";
 
 export default async function ImportPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if ((session as { role?: string }).role !== "ADMIN") redirect("/companies");
 
   return (
     <div className="space-y-6">

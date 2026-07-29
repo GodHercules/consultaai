@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CircleHelpIcon, PlusIcon } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,9 +44,9 @@ function statusMeta(status: string) {
 }
 
 export default async function ImportHistoryPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   let items: ImportHistoryItem[] = [];
   let totalImports = 0;
@@ -56,20 +55,13 @@ export default async function ImportHistoryPage() {
   let dataUnavailable = false;
 
   try {
-    const [total, done, failed, history] = await Promise.all([
-      prisma.importHistory.count(),
-      prisma.importHistory.count({ where: { status: "DONE" } }),
-      prisma.importHistory.count({ where: { status: "FAILED" } }),
-      prisma.importHistory.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 30,
-      }),
-    ]);
-
-    totalImports = total;
-    doneImports = done;
-    failedImports = failed;
-    items = history as ImportHistoryItem[];
+    const response = await backendFetch("/api/admin/import-history?page=1&pageSize=30");
+    if (!response.ok) throw new Error("import history unavailable");
+    const data = await response.json() as { total?: number; items?: Array<ImportHistoryItem & { createdAt: string }> };
+    items = (data.items ?? []).map((item) => ({ ...item, createdAt: new Date(item.createdAt) }));
+    totalImports = data.total ?? items.length;
+    doneImports = items.filter((item) => item.status === "DONE").length;
+    failedImports = items.filter((item) => item.status === "FAILED").length;
   } catch {
     dataUnavailable = true;
   }

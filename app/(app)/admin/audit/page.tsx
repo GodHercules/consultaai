@@ -1,15 +1,14 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   let items: Array<{
     id: string;
@@ -22,18 +21,10 @@ export default async function AuditPage() {
   let dataUnavailable = false;
 
   try {
-    items = await prisma.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      select: {
-        id: true,
-        action: true,
-        entity: true,
-        entityId: true,
-        createdAt: true,
-        user: { select: { email: true, name: true } },
-      },
-    });
+    const response = await backendFetch("/api/admin/audit?page=1&pageSize=50");
+    if (!response.ok) throw new Error("audit unavailable");
+    const data = await response.json() as { items?: typeof items };
+    items = (data.items ?? []).map((item) => ({ ...item, createdAt: new Date(item.createdAt) }));
   } catch {
     dataUnavailable = true;
   }

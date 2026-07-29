@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ export function PendingCompaniesTable(props: { initialItems: PendingCompanyListI
   async function approve(id: string) {
     setLoadingId(id);
     try {
-      const res = await fetch(`/api/admin/pending-companies/${id}/approve`, { method: "POST" });
+      const res = await apiFetch(`/api/admin/pending-companies/${id}/approve`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error("Não foi possível aprovar", { description: data?.error || "Tente novamente." });
@@ -46,7 +47,7 @@ export function PendingCompaniesTable(props: { initialItems: PendingCompanyListI
   async function reject(id: string) {
     setLoadingId(id);
     try {
-      const res = await fetch(`/api/admin/pending-companies/${id}/reject`, {
+      const res = await apiFetch(`/api/admin/pending-companies/${id}/reject`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ reason: "" }),

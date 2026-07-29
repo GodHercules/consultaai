@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +82,7 @@ export function CompanyForm(props: {
     try {
       const url = props.mode === "create" ? "/api/companies" : `/api/companies/${props.companyId}`;
       const method = props.mode === "create" ? "POST" : "PATCH";
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "content-type": "application/json" },
         body: JSON.stringify(form),

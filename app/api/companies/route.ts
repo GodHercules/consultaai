@@ -56,6 +56,8 @@ export async function GET(request: Request) {
     codigoInterno: url.searchParams.get("codigoInterno"),
     sistema: url.searchParams.get("sistema"),
     certificado: url.searchParams.get("certificado"),
+    municipio: url.searchParams.get("municipio"),
+    sort: url.searchParams.get("sort") === "name" ? "name" : "recent",
     ativo:
       url.searchParams.get("ativo") === null
         ? null
@@ -68,7 +70,16 @@ export async function GET(request: Request) {
     pageSize,
   });
 
-  return Response.json(result);
+  const [activeCount, inactiveCount, warningCount] = await Promise.all([
+    prisma.company.count({ where: { ativo: true } }),
+    prisma.company.count({ where: { ativo: false } }),
+    prisma.company.count({ where: { importWarning: { not: null } } }),
+  ]);
+
+  return Response.json({
+    ...result,
+    summary: { activeCount, inactiveCount, warningCount },
+  });
 }
 
 export async function POST(request: Request) {

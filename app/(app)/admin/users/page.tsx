@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/services/auth/session";
+import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +10,9 @@ import { PageHeader } from "@/components/app/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
-  const session = await getSessionUser();
+  const session = await getBackendSession() as { role?: string } | null;
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/companies");
+  if (session.role !== "ADMIN") redirect("/companies");
 
   let users: Array<{
     id: string;
@@ -28,20 +27,10 @@ export default async function AdminUsersPage() {
   let dataUnavailable = false;
 
   try {
-    users = await prisma.user.findMany({
-      orderBy: [{ role: "asc" }, { createdAt: "desc" }],
-      take: 50,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        department: true,
-        isDepartmentLeader: true,
-        isActive: true,
-        mustChangePassword: true,
-      },
-    });
+    const response = await backendFetch("/api/admin/users?page=1&pageSize=50");
+    if (!response.ok) throw new Error("users unavailable");
+    const data = await response.json() as { items?: typeof users };
+    users = data.items ?? [];
   } catch {
     dataUnavailable = true;
   }
