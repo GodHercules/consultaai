@@ -14,6 +14,15 @@ import { formatCnpjDisplay } from "@/utils/cnpj";
 import { isBlank, TAXATION_LABELS, TAXATION_TYPES, TAX_REGIME_LABELS, TAX_REGIMES, type CnaeActivity } from "@/utils/company";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const BRAZILIAN_STATES = [
+  ["AC", "Acre"], ["AL", "Alagoas"], ["AP", "Amapá"], ["AM", "Amazonas"], ["BA", "Bahia"],
+  ["CE", "Ceará"], ["DF", "Distrito Federal"], ["ES", "Espírito Santo"], ["GO", "Goiás"], ["MA", "Maranhão"],
+  ["MT", "Mato Grosso"], ["MS", "Mato Grosso do Sul"], ["MG", "Minas Gerais"], ["PA", "Pará"], ["PB", "Paraíba"],
+  ["PR", "Paraná"], ["PE", "Pernambuco"], ["PI", "Piauí"], ["RJ", "Rio de Janeiro"], ["RN", "Rio Grande do Norte"],
+  ["RS", "Rio Grande do Sul"], ["RO", "Rondônia"], ["RR", "Roraima"], ["SC", "Santa Catarina"], ["SP", "São Paulo"],
+  ["SE", "Sergipe"], ["TO", "Tocantins"],
+] as const;
+
 type CompanyFormData = {
   qtd?: string | null;
   codigoInterno?: string | null;
@@ -172,14 +181,11 @@ export function CompanyForm(props: {
         </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardContent className="company-form-grid grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="qtd">QTD</Label>
-            <Input id="qtd" inputMode="numeric" value={form.qtd ?? ""} onChange={(e) => set("qtd", e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="codigoInterno">CÓD</Label>
-            <Input id="codigoInterno" value={form.codigoInterno ?? ""} onChange={(e) => set("codigoInterno", e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="inscricaoMunicipal">Inscrição Municipal (CGA)</Label>
@@ -222,11 +228,14 @@ export function CompanyForm(props: {
             <Input id="municipio" value={form.municipio ?? ""} onChange={(e) => set("municipio", e.target.value)} placeholder="Cidade/UF" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="uf">UF</Label>
-            <Input id="uf" value={form.uf ?? ""} onChange={(e) => set("uf", e.target.value.toUpperCase().slice(0, 2))} maxLength={2} />
+            <Label className="px-3" htmlFor="uf">UF</Label>
+            <Select value={form.uf || undefined} onValueChange={(value) => set("uf", value)}>
+              <SelectTrigger id="uf"><SelectValue placeholder="Selecione o estado" /></SelectTrigger>
+              <SelectContent>{BRAZILIAN_STATES.map(([code, name]) => <SelectItem key={code} value={code}>{code} — {name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="telefoneContato">Telefone de contato</Label>
+            <Label className="px-3" htmlFor="telefoneContato">Telefone de contato</Label>
             <Input
               id="telefoneContato"
               value={form.telefoneContato ?? ""}
@@ -235,7 +244,7 @@ export function CompanyForm(props: {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="emailContato">E-mail de contato</Label>
+            <Label className="px-3" htmlFor="emailContato">E-mail de contato</Label>
             <Input
               id="emailContato"
               type="email"
@@ -302,7 +311,7 @@ export function CompanyForm(props: {
               <Button
                 type="button"
                 variant={form.ehGrupo === false ? "default" : "outline"}
-                onClick={() => set("ehGrupo", false)}
+                onClick={() => setForm((current) => ({ ...current, ehGrupo: false, grupo: "" }))}
                 className="flex-1"
               >
                 Não
@@ -318,6 +327,12 @@ export function CompanyForm(props: {
               placeholder="Notas internas da empresa."
             />
           </div>
+          {form.ehGrupo === true ? (
+            <div className="group-field space-y-2 md:col-span-2">
+              <Label className="px-3" htmlFor="grupo">Grupo</Label>
+              <Input id="grupo" value={form.grupo ?? ""} onChange={(e) => set("grupo", e.target.value)} placeholder="Nome do grupo empresarial" />
+            </div>
+          ) : null}
         </CardContent>
         <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => router.back()}>
@@ -328,6 +343,22 @@ export function CompanyForm(props: {
           </Button>
         </CardFooter>
       </form>
+      <style jsx global>{`
+        .company-form-grid > div:has(label[for="qtd"]),
+        .company-form-grid > div:has(label[for="codigoInterno"]) {
+          display: none;
+        }
+        .company-form-grid > div:not(.group-field):has(label[for="grupo"]) {
+          display: none;
+        }
+        .company-form-grid > div:has(#cnpj) { order: -2; }
+        .company-form-grid > div:has(#inscricaoMunicipal) { order: -1; }
+        .company-form-grid > div.group-field { order: 1; }
+        .company-form-grid > div:has(textarea#observacao) { order: 2; }
+        .company-form-grid label {
+          padding-inline: 0.75rem;
+        }
+      `}</style>
     </Card>
   );
 }
