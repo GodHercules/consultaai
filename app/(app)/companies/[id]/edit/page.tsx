@@ -22,6 +22,7 @@ export default async function CompanyEditPage(props: {
     codigoInterno: string | null;
     observacao: string | null;
     cnpj: string | null;
+    inscricaoMunicipal: string | null;
     ehGrupo: boolean | null;
     grupo: string | null;
     regimeTributario: string | null;
@@ -30,8 +31,10 @@ export default async function CompanyEditPage(props: {
     anexo: string | null;
     das: string | null;
     municipio: string | null;
+    uf: string | null;
     telefoneContato: string | null;
     emailContato: string | null;
+    atividadesCnae: unknown;
     ativo: boolean;
   } | null = null;
 
@@ -99,6 +102,7 @@ export default async function CompanyEditPage(props: {
           nomeFantasia: company.nomeFantasia,
           observacao: company.observacao,
           cnpj: company.cnpj,
+          inscricaoMunicipal: company.inscricaoMunicipal,
           ehGrupo: company.ehGrupo,
           grupo: company.grupo,
           regimeTributario: company.regimeTributario,
@@ -107,8 +111,10 @@ export default async function CompanyEditPage(props: {
           anexo: company.anexo,
           das: company.das,
           municipio: company.municipio,
+          uf: company.uf,
           telefoneContato: company.telefoneContato,
           emailContato: company.emailContato,
+          atividadesCnae: Array.isArray(company.atividadesCnae) ? company.atividadesCnae : [],
           ativo: company.ativo,
         }}
       />

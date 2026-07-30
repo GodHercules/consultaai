@@ -11,6 +11,7 @@
     "test:company-import": "tsx tests/company-import.integration.ts",
     "test:company-partners-import": "tsx tests/company-partners-import.integration.ts",
     "test:fundarmf": "tsx tests/fundarmf-webhook.integration.ts",
+    "test:company-domain": "tsx tests/company-domain.test.ts",
     "audit:companies": "tsx scripts/audit-company-data.ts",
     "db:backfill-company-identity": "tsx scripts/backfill-company-identity.ts"
   },

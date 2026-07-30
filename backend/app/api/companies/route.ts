@@ -8,6 +8,7 @@ import { auditLog } from "@/services/audit";
 import { isUniqueConstraintError } from "@/services/db/errors";
 import { requireAuth } from "@/services/auth/require";
 import { normalizeCompany } from "@/services/company/normalize";
+import { TAXATION_TYPES, TAX_REGIMES } from "@/utils/company";
 
 const nullableInteger = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) return null;
@@ -27,16 +28,19 @@ const createSchema = z.object({
   nomeFantasia: z.string().optional().nullable(),
   observacao: z.string().optional().nullable(),
   cnpj: z.string().optional().nullable(),
+  inscricaoMunicipal: z.string().max(80).optional().nullable(),
   ehGrupo: z.boolean().optional().nullable(),
   grupo: z.string().optional().nullable(),
-  regimeTributario: z.string().optional().nullable(),
+  regimeTributario: z.enum(TAXATION_TYPES),
   sistema: z.string().optional().nullable(),
-  certificado: z.string().optional().nullable(),
+  certificado: z.enum(TAX_REGIMES),
   anexo: z.string().optional().nullable(),
   das: z.string().optional().nullable(),
   municipio: z.string().optional().nullable(),
+  uf: z.string().max(2).optional().nullable(),
   telefoneContato: z.string().optional().nullable(),
   emailContato: z.string().optional().nullable(),
+  atividadesCnae: z.array(z.object({ codigo: z.string(), descricao: z.string(), principal: z.boolean() })).optional().nullable(),
   ativo: z.boolean().optional().nullable(),
 });
 

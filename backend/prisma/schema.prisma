@@ -86,6 +86,7 @@ model Company {
   observacao            String?
   cnpj                  String?
   cnpjNumerico          String?
+  inscricaoMunicipal    String?
   raizCnpj              String?
   dataAbertura          DateTime?
   statusCadastral       String?
@@ -112,8 +113,9 @@ model Company {
     bairro                String?
     cidade                String?
     uf                    String?
-    cnaePrincipal         String?
-    cnaesSecundarios      Json?
+  cnaePrincipal         String?
+  cnaesSecundarios      Json?
+  atividadesCnae        Json?
     externalOrigin        String?
     fundarmfCaseId        String?
     importedAt            DateTime?

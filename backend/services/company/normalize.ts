@@ -2,6 +2,7 @@ import { cnpjRaiz, isValidCnpj, normalizeCnpj } from "@/utils/cnpj";
 import { isValidEmailAddress, normalizeEmailAddress, normalizePhoneDigits, normalizePhoneDisplay } from "@/utils/contact";
 import { buildCompanyIdentity } from "@/services/company/identity";
 import { normalizeText } from "@/utils/strings";
+import { normalizeCnaeActivities } from "@/utils/company";
 
 export type CompanyInput = {
   qtd?: number | null;
@@ -10,6 +11,7 @@ export type CompanyInput = {
   nomeFantasia?: string | null;
   observacao?: string | null;
   cnpj?: string | null;
+  inscricaoMunicipal?: string | null;
   dataAbertura?: Date | string | null;
   statusCadastral?: string | null;
   ehGrupo?: boolean | null;
@@ -20,6 +22,7 @@ export type CompanyInput = {
   anexo?: string | null;
   das?: string | null;
   municipio?: string | null;
+  uf?: string | null;
   telefoneContato?: string | null;
   whatsappContato?: string | null;
   emailContato?: string | null;
@@ -30,9 +33,9 @@ export type CompanyInput = {
   complemento?: string | null;
   bairro?: string | null;
   cidade?: string | null;
-  uf?: string | null;
   cnaePrincipal?: string | null;
   cnaesSecundarios?: string[] | null;
+  atividadesCnae?: unknown;
   externalOrigin?: string | null;
   fundarmfCaseId?: string | null;
   importedAt?: Date | null;
@@ -53,6 +56,7 @@ export function normalizeCompany(input: CompanyInput) {
     nomeFantasia: input.nomeFantasia?.trim() || null,
     observacao: input.observacao?.trim() || null,
     cnpj: input.cnpj?.trim() || null,
+    inscricaoMunicipal: input.inscricaoMunicipal?.trim().slice(0, 80) || null,
     cnpjNumerico: validCnpj,
     raizCnpj: validCnpj ? cnpjRaiz(validCnpj) : null,
     dataAbertura:
@@ -75,6 +79,7 @@ export function normalizeCompany(input: CompanyInput) {
     anexo: input.anexo?.trim() || null,
     das: input.das?.trim() || null,
     municipio: input.municipio?.trim() || null,
+    uf: input.uf?.trim().toUpperCase() || null,
     telefoneContato: normalizePhoneDisplay(input.telefoneContato),
     telefoneContatoNumerico: normalizePhoneDigits(input.telefoneContato),
     whatsappContato: normalizePhoneDisplay(input.whatsappContato),
@@ -89,9 +94,9 @@ export function normalizeCompany(input: CompanyInput) {
     complemento: input.complemento?.trim() || null,
     bairro: input.bairro?.trim() || null,
     cidade: input.cidade?.trim() || null,
-    uf: input.uf?.trim().toUpperCase() || null,
     cnaePrincipal: input.cnaePrincipal?.trim() || null,
     cnaesSecundarios: input.cnaesSecundarios?.map((item) => item.trim()).filter((item): item is string => Boolean(item)) ?? null,
+    atividadesCnae: normalizeCnaeActivities(input.atividadesCnae),
     externalOrigin: input.externalOrigin?.trim() || null,
     fundarmfCaseId: input.fundarmfCaseId?.trim() || null,
     importedAt: input.importedAt ?? null,

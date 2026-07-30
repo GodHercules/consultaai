@@ -43,6 +43,7 @@ export default async function CompanyDetailPage(props: {
     observacao: string | null;
     cnpj: string | null;
     cnpjNumerico: string | null;
+    inscricaoMunicipal: string | null;
     grupo: string | null;
     regimeTributario: string | null;
     sistema: string | null;
@@ -52,6 +53,8 @@ export default async function CompanyDetailPage(props: {
     municipio: string | null;
     telefoneContato: string | null;
     emailContato: string | null;
+    uf: string | null;
+    atividadesCnae: unknown;
     ehGrupo: boolean | null;
     ativo: boolean;
     importWarning: string | null;
@@ -167,6 +170,10 @@ export default async function CompanyDetailPage(props: {
               <div className="mt-2 text-sm font-medium">{cnpjLabel}</div>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Inscrição Municipal (CGA)</div>
+              <div className="mt-2 text-sm font-medium">{company.inscricaoMunicipal || "-"}</div>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">CÓD</div>
               <div className="mt-2 text-sm font-medium">{codeLabel}</div>
             </div>
@@ -206,7 +213,7 @@ export default async function CompanyDetailPage(props: {
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Regime</div>
-              <div className="mt-2 text-sm font-medium">{company.certificado || "-"}</div>
+              <div className="mt-2 text-sm font-medium">{company.certificado === "COMPETENCIA" ? "COMPETÊNCIA" : company.certificado || "-"}</div>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Anexo</div>
@@ -219,6 +226,15 @@ export default async function CompanyDetailPage(props: {
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4 col-span-full">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Observações</div>
               <div className="mt-2 whitespace-pre-wrap text-sm leading-6">{company.observacao || "-"}</div>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 col-span-full">
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Atividades — CNAEs</div>
+              <div className="mt-3 space-y-2 text-sm">
+                {Array.isArray(company.atividadesCnae) && company.atividadesCnae.length ? company.atividadesCnae.map((activity, index) => {
+                  const item = activity as { codigo?: string; descricao?: string; principal?: boolean };
+                  return <div key={`${item.codigo}-${index}`} className="flex flex-wrap items-center gap-2"><span className="font-mono">{item.codigo}</span><span>{item.descricao}</span>{item.principal ? <Badge variant="secondary">Principal</Badge> : <span className="text-muted-foreground">Secundária</span>}</div>;
+                }) : <span className="text-muted-foreground">-</span>}
+              </div>
             </div>
           </CardContent>
         </Card>
