@@ -34,7 +34,7 @@ export async function lookupCnpj(rawCnpj: string): Promise<CnpjLookupResult> {
   const timeout = setTimeout(() => controller.abort(), 5000);
   let response: Response;
   try {
-    response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+    response = await fetch(`https://kitana.opencnpj.com/cnpj/${cnpj}`, {
       signal: controller.signal,
       headers: { accept: "application/json" },
       cache: "no-store",
@@ -48,32 +48,32 @@ export async function lookupCnpj(rawCnpj: string): Promise<CnpjLookupResult> {
   if (response.status === 404) throw new Error("COMPANY_NOT_FOUND");
   if (response.status === 429) throw new Error("RATE_LIMITED");
   if (!response.ok) throw new Error("PROVIDER_UNAVAILABLE");
-  const data = await response.json().catch(() => null) as Record<string, unknown> | null;
-  if (!data) throw new Error("INCOMPLETE_RESPONSE");
+  const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!payload || payload.success === false) {
+    if (response.status === 404 || payload?.message) throw new Error("COMPANY_NOT_FOUND");
+    throw new Error("INCOMPLETE_RESPONSE");
+  }
+  const data = (payload.data && typeof payload.data === "object" ? payload.data : payload) as Record<string, unknown>;
 
-  const secondary = Array.isArray(data.cnaes_secundarios)
-    ? data.cnaes_secundarios.map((item) => ({
-        codigo: String((item as Record<string, unknown>)?.codigo ?? ""),
-        descricao: String((item as Record<string, unknown>)?.descricao ?? ""),
-        principal: false,
-      }))
-    : [];
-  const atividades = normalizeCnaeActivities([
-    { codigo: data.cnae_fiscal, descricao: data.cnae_fiscal_descricao, principal: true },
-    ...secondary,
-  ]);
-  if (!text(data.municipio) && !text(data.email) && !text(data.ddd_telefone_1) && !atividades.length) {
+  const cnaes = Array.isArray(data.cnaes) ? data.cnaes : [];
+  const atividades = normalizeCnaeActivities(cnaes.map((item, index) => ({
+    codigo: String((item as Record<string, unknown>)?.cnae ?? ""),
+    descricao: String((item as Record<string, unknown>)?.descricao ?? ""),
+    principal: index === 0,
+  })));
+  const telefone = phone(data.telefone ?? data.ddd_telefone_1);
+  if (!text(data.municipio) && !text(data.email) && !telefone && !atividades.length) {
     throw new Error("INCOMPLETE_RESPONSE");
   }
   const value: CnpjLookupResult = {
     cnpj,
-    razaoSocial: text(data.razao_social),
+    razaoSocial: text(data.razaoSocial ?? data.razao_social),
     municipio: text(data.municipio),
     uf: text(data.uf)?.toUpperCase() ?? null,
     email: text(data.email)?.toLowerCase() ?? null,
-    telefones: [phone(data.ddd_telefone_1), phone(data.ddd_telefone_2)].filter((item): item is string => Boolean(item)),
+    telefones: [telefone, phone(data.telefone_2 ?? data.ddd_telefone_2)].filter((item): item is string => Boolean(item)),
     atividades,
-    provedor: "BrasilAPI",
+    provedor: "OpenCNPJ",
     consultadoEm: new Date().toISOString(),
   };
   cache.set(cnpj, { expiresAt: Date.now() + 10 * 60_000, value });
