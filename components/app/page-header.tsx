@@ -20,14 +20,10 @@ export function PageHeader(props: {
   return (
     <header
       className={cn(
-        "animate-glass-rise relative flex flex-col gap-5 overflow-hidden rounded-[2.25rem] border border-border/60 bg-white/90 p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] backdrop-blur-xl sm:p-6 lg:flex-row lg:items-end lg:justify-between lg:p-7 xl:p-8",
+"relative flex flex-col gap-5 bg-transparent pb-5 sm:pb-6 lg:flex-row lg:items-end lg:justify-between",
         props.className
       )}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(29,78,216,0.8),rgba(96,165,250,0.65),transparent)]"
-      />
       <div className="animate-glass-rise min-w-0 space-y-3 [animation-delay:90ms]">
         {breadcrumbs.length ? (
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -54,13 +50,13 @@ export function PageHeader(props: {
         ) : null}
 
         {props.kicker ? (
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#1d4ed8]">
+          <p className="text-sm font-medium text-primary">
             {props.kicker}
           </p>
         ) : null}
 
         <div className="space-y-2">
-          <h1 className="font-display text-balance text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl xl:text-[2.9rem]">
+          <h1 className="font-display text-balance text-2xl font-semibold tracking-[-0.04em] text-foreground sm:text-3xl">
             {props.title}
           </h1>
           {props.description ? (

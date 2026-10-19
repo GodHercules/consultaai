@@ -2,7 +2,7 @@
 
 import { apiFetch } from "@/lib/api-client";
 import { useState } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,6 +70,11 @@ export function CompanyForm(props: {
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [municipalities, setMunicipalities] = useState<Array<{ id: number; nome: string }>>([]);
+  const [municipalitiesLoading, setMunicipalitiesLoading] = useState(false);
+  const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null);
+  const [municipalitiesOpen, setMunicipalitiesOpen] = useState(false);
+  const municipalitiesCache = useRef(new Map<string, Array<{ id: number; nome: string }>>());
   const automaticLookupDone = useRef(false);
   const [form, setForm] = useState<CompanyFormData>({
     qtd: props.initial?.qtd ?? "",
@@ -141,6 +146,42 @@ export function CompanyForm(props: {
       return () => window.clearTimeout(timer);
     }
   }, [form.atividadesCnae?.length, form.cnpj, form.emailContato, form.municipio, form.telefoneContato, lookupByCnpj, props.mode]);
+
+  useEffect(() => {
+    const uf = form.uf?.trim().toUpperCase() ?? "";
+    if (!uf) {
+      return;
+    }
+    const cached = municipalitiesCache.current.get(uf);
+    if (cached) {
+      setMunicipalities(cached);
+      return;
+    }
+    const controller = new AbortController();
+    setMunicipalitiesLoading(true);
+    setMunicipalitiesError(null);
+    apiFetch(`/api/locations/municipalities?uf=${uf}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error || "MUNICIPALITIES_UNAVAILABLE");
+        const values = Array.isArray(payload.municipalities) ? payload.municipalities : [];
+        municipalitiesCache.current.set(uf, values);
+        setMunicipalities(values);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setMunicipalitiesError("Não foi possível carregar os municípios deste estado.");
+        setMunicipalities([]);
+      })
+      .finally(() => setMunicipalitiesLoading(false));
+    return () => controller.abort();
+  }, [form.uf]);
+
+  const filteredMunicipalities = useMemo(() => {
+    const query = form.municipio?.trim().toLocaleLowerCase("pt-BR") ?? "";
+    if (!query) return municipalities.slice(0, 80);
+    return municipalities.filter((item) => item.nome.toLocaleLowerCase("pt-BR").includes(query)).slice(0, 80);
+  }, [form.municipio, municipalities]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -225,11 +266,54 @@ export function CompanyForm(props: {
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="municipio">Município</Label>
-            <Input id="municipio" value={form.municipio ?? ""} onChange={(e) => set("municipio", e.target.value)} placeholder="Cidade/UF" />
+            <div className="relative">
+              <Input
+                id="municipio"
+                role="combobox"
+                aria-expanded={municipalitiesOpen}
+                aria-controls="municipio-options"
+                autoComplete="off"
+                value={form.municipio ?? ""}
+                onFocus={() => { if (form.uf && municipalities.length) setMunicipalitiesOpen(true); }}
+                onBlur={() => window.setTimeout(() => setMunicipalitiesOpen(false), 120)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setMunicipalitiesOpen(false);
+                  if (event.key === "ArrowDown" && form.uf) setMunicipalitiesOpen(true);
+                  if (event.key === "Enter" && municipalitiesOpen && filteredMunicipalities[0]) {
+                    event.preventDefault();
+                    set("municipio", filteredMunicipalities[0].nome);
+                    setMunicipalitiesOpen(false);
+                  }
+                }}
+                onChange={(e) => { set("municipio", e.target.value); setMunicipalitiesOpen(Boolean(form.uf)); }}
+                placeholder={form.uf ? "Digite para filtrar o município" : "Selecione a UF primeiro"}
+                disabled={!form.uf}
+              />
+              {municipalitiesOpen && form.uf ? (
+                <div id="municipio-options" role="listbox" className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-border/70 bg-popover p-1 text-popover-foreground shadow-xl">
+                  {municipalitiesLoading ? <div className="px-3 py-2 text-sm text-muted-foreground">Carregando municípios...</div> : null}
+                  {!municipalitiesLoading && filteredMunicipalities.map((municipality) => (
+                    <button
+                      key={municipality.id}
+                      type="button"
+                      role="option"
+                      aria-selected={form.municipio === municipality.nome}
+                      className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => { set("municipio", municipality.nome); setMunicipalitiesOpen(false); }}
+                    >
+                      {municipality.nome}
+                    </button>
+                  ))}
+                  {!municipalitiesLoading && !filteredMunicipalities.length && !municipalitiesError ? <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum município encontrado.</div> : null}
+                  {municipalitiesError ? <div role="alert" className="px-3 py-2 text-sm text-destructive">{municipalitiesError}</div> : null}
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="space-y-2">
             <Label className="px-3" htmlFor="uf">UF</Label>
-            <Select value={form.uf || undefined} onValueChange={(value) => set("uf", value)}>
+            <Select value={form.uf || undefined} onValueChange={(value) => { set("uf", value); set("municipio", ""); setMunicipalitiesOpen(false); }}>
               <SelectTrigger id="uf"><SelectValue placeholder="Selecione o estado" /></SelectTrigger>
               <SelectContent>{BRAZILIAN_STATES.map(([code, name]) => <SelectItem key={code} value={code}>{code} — {name}</SelectItem>)}</SelectContent>
             </Select>
@@ -276,7 +360,7 @@ export function CompanyForm(props: {
               <SelectContent>{TAX_REGIMES.map((value) => <SelectItem key={value} value={value}>{TAX_REGIME_LABELS[value]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-3 md:col-span-2">
+          <div className="activities-field space-y-3 md:col-span-2">
             <div className="flex items-center justify-between gap-3">
               <div><Label>Atividades — CNAEs</Label><p className="mt-1 text-xs text-muted-foreground">Informe código e descrição; a primeira atividade é principal.</p></div>
               <Button type="button" variant="outline" onClick={() => set("atividadesCnae", [...(form.atividadesCnae ?? []), { codigo: "", descricao: "", principal: !(form.atividadesCnae?.length) }])}>Adicionar CNAE</Button>
@@ -353,8 +437,19 @@ export function CompanyForm(props: {
         }
         .company-form-grid > div:has(#cnpj) { order: -2; }
         .company-form-grid > div:has(#inscricaoMunicipal) { order: -1; }
-        .company-form-grid > div.group-field { order: 1; }
-        .company-form-grid > div:has(textarea#observacao) { order: 2; }
+        .company-form-grid > div:has(#uf) { order: 1; }
+        .company-form-grid > div:has(#municipio) { order: 2; }
+        .company-form-grid > div:has(#telefoneContato) { order: 3; }
+        .company-form-grid > div:has(#emailContato) { order: 4; }
+        .company-form-grid > div:has(#regimeTributario) { order: 5; }
+        .company-form-grid > div:has(#sistema) { order: 6; }
+        .company-form-grid > div:has(#certificado) { order: 7; }
+        .company-form-grid > div.activities-field { order: 8; }
+        .company-form-grid > div:has(#anexo) { order: 9; }
+        .company-form-grid > div:has(#das) { order: 10; }
+        .company-form-grid > div:has(#ehGrupo) { order: 11; }
+        .company-form-grid > div.group-field { order: 12; }
+        .company-form-grid > div:has(textarea#observacao) { order: 13; }
         .company-form-grid label {
           padding-inline: 0.75rem;
         }

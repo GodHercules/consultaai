@@ -7,3 +7,6 @@ out/
 !.env.example
 playwright-report/
 test-results/
+.playwright-cli/
+.taste-skill/
+output/playwright/

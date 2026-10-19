@@ -85,16 +85,16 @@ function isVisible(item: NavItem, role: Role, department: Department | null) {
 }
 
 function toneStyles(active: boolean, tone: NavItem["tone"]) {
-  if (active) return "bg-[#1d4ed8] text-white ring-[#bfdbfe]";
+  if (active) return "bg-transparent text-[#155eef] ring-transparent";
   switch (tone) {
     case "emerald":
-      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+      return "bg-transparent text-emerald-700 ring-transparent";
     case "amber":
-      return "bg-amber-50 text-amber-700 ring-amber-200";
+      return "bg-transparent text-amber-700 ring-transparent";
     case "violet":
-      return "bg-violet-50 text-violet-700 ring-violet-200";
+      return "bg-transparent text-slate-600 ring-transparent";
     default:
-      return "bg-slate-100 text-slate-600 ring-slate-200";
+      return "bg-transparent text-slate-600 ring-transparent";
   }
 }
 
@@ -119,10 +119,10 @@ function NavLink(props: {
       href={props.item.href}
       aria-label={props.item.label}
       className={cn(
-        "group flex w-full items-center rounded-[1.2rem] border text-sm transition-all duration-200",
+"group flex w-full items-center rounded-[1.2rem] border text-sm transition-[border-color,background-color,color,transform] duration-200",
         compact ? "flex-col justify-center px-1.5 py-2.5" : "gap-3 px-3 py-3.5",
         props.active
-          ? "border-[#bfdbfe] bg-white text-slate-950 shadow-[0_14px_36px_-26px_rgba(29,78,216,0.18)]"
+? "border-[#bfdbfe] bg-white text-slate-950"
           : "border-slate-200 bg-white/80 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-950"
       )}
       aria-current={props.active ? "page" : undefined}
@@ -134,7 +134,7 @@ function NavLink(props: {
       <span
         aria-hidden="true"
         className={cn(
-          "relative flex shrink-0 items-center justify-center rounded-[1rem] border ring-1 transition-transform duration-200 group-hover:scale-[1.02]",
+"relative flex shrink-0 items-center justify-center rounded-[1rem] transition-transform duration-200 group-hover:scale-[1.02]",
           compact ? "size-10" : "size-11",
           toneStyles(props.active, props.item.tone)
         )}
@@ -153,7 +153,7 @@ function NavLink(props: {
       )}
 
       {props.active && !compact ? (
-        <span className="flex size-2.5 items-center justify-center rounded-full bg-[#2563eb] shadow-[0_0_0_7px_rgba(37,99,235,0.12)]" />
+        <span className="flex size-2.5 items-center justify-center rounded-full bg-[#2563eb]" />
       ) : null}
     </Link>
   );
@@ -180,8 +180,8 @@ export function SideNav(props: {
 
   if (props.variant === "mobile") {
     return (
-      <nav className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
-        <div className="border-b border-slate-200/80 p-4">
+      <nav className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-950">
+        <div className="bg-slate-50/70 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.4em] text-slate-500">Central de Clientes</p>
@@ -216,8 +216,8 @@ export function SideNav(props: {
   }
 
   return (
-    <nav className="relative z-30 flex h-full min-h-0 w-full flex-col overflow-visible rounded-[2.35rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-950 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.16)]">
-      <div className="border-b border-slate-200/80 p-3">
+    <nav className="relative z-30 flex h-full min-h-0 w-full flex-col overflow-visible rounded-xl border border-slate-200 bg-white text-slate-950">
+      <div className="bg-slate-50/70 p-3">
         <div className={cn("flex items-center", compact ? "justify-center" : "justify-between gap-2")}>
           {compact ? null : (
             <div className="min-w-0">
@@ -299,7 +299,7 @@ export function SideNav(props: {
       {compact && hoverTooltip && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="pointer-events-none fixed z-[9999] whitespace-nowrap rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-white shadow-[0_18px_40px_-22px_rgba(15,23,42,0.45)]"
+              className="pointer-events-none fixed z-[9999] whitespace-nowrap rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-white"
               style={{ top: `${hoverTooltip.top}px`, left: `${hoverTooltip.left}px`, transform: "translateY(-50%)" }}
             >
               {hoverTooltip.label}
@@ -309,7 +309,7 @@ export function SideNav(props: {
         : null}
 
       {!compact ? (
-        <div className="border-t border-slate-200/80 p-3">
+        <div className="bg-slate-50/70 p-3">
           <div className="rounded-[1.2rem] border border-slate-200 bg-white/90 p-3">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-[1rem] border border-[#bfdbfe] bg-[#dbeafe] text-[#1d4ed8]">

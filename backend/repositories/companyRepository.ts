@@ -72,6 +72,7 @@ export async function searchCompanies(params: CompanySearchParams) {
         nomeFantasia: true,
         cnpj: true,
         cnpjNumerico: true,
+        municipio: true,
         grupo: true,
         regimeTributario: true,
         sistema: true,

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CircleHelpIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { CircleHelpIcon, DownloadIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { backendFetch, getBackendSession } from "@/lib/server-backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/app/page-header";
+import { CompanyExportButton } from "@/components/companies/company-export-button";
 import { cn } from "@/lib/utils";
 import { formatCnpjDisplay } from "@/utils/cnpj";
 
@@ -14,10 +15,24 @@ export const dynamic = "force-dynamic";
 
 type SearchStatus = "all" | "active" | "inactive";
 
+type CompanyListItem = {
+  id: string;
+  razaoSocial: string | null;
+  nomeFantasia: string | null;
+  codigoInterno: string | null;
+  cnpjNumerico: string | null;
+  municipio: string | null;
+  regimeTributario: string | null;
+  sistema?: string | null;
+  certificado?: string | null;
+  observacao?: string | null;
+  ativo: boolean;
+  importWarning: string | null;
+};
+
 function parseStatus(value: string | string[] | undefined): SearchStatus {
   const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === "active" || raw === "inactive" || raw === "all") return raw;
-  return "all";
+  return raw === "active" || raw === "inactive" || raw === "all" ? raw : "all";
 }
 
 function parseText(value: string | string[] | undefined) {
@@ -37,31 +52,22 @@ function buildHref(base: { q: string; status: SearchStatus; municipio: string; p
 export default async function CompaniesPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getBackendSession() as { role?: string } | null;
+  const session = (await getBackendSession()) as { role?: string } | null;
   if (!session) redirect("/login");
 
-  const sp = await props.searchParams;
-  const q = typeof sp.q === "string" ? sp.q : "";
-  const municipio = parseText(sp.municipio);
-  const status = parseStatus(sp.status);
-  const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1"));
+  const searchParams = await props.searchParams;
+  const q = parseText(searchParams.q);
+  const municipio = parseText(searchParams.municipio);
+  const status = parseStatus(searchParams.status);
+  const page = Math.max(1, Number.parseInt(parseText(searchParams.page) || "1", 10) || 1);
   const pageSize = 20;
   const hasSearch = Boolean(q.trim() || municipio.trim() || status !== "all");
+
   let activeCompaniesCount = 0;
   let inactiveCompaniesCount = 0;
   let warningCompaniesCount = 0;
   let total = 0;
-  let items: Array<{
-    id: string;
-    razaoSocial: string | null;
-    nomeFantasia: string | null;
-    codigoInterno: string | null;
-    cnpjNumerico: string | null;
-    municipio: string | null;
-    regimeTributario: string | null;
-    ativo: boolean;
-    importWarning: string | null;
-  }> = [];
+  let items: CompanyListItem[] = [];
   let dataUnavailable = false;
 
   try {
@@ -70,11 +76,12 @@ export default async function CompaniesPage(props: {
     if (municipio.trim()) params.set("municipio", municipio.trim());
     if (status === "active") params.set("ativo", "true");
     if (status === "inactive") params.set("ativo", "false");
+
     const response = await backendFetch(`/api/companies?${params.toString()}`);
     if (!response.ok) throw new Error("companies unavailable");
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       total?: number;
-      items?: typeof items;
+      items?: CompanyListItem[];
       summary?: { activeCount?: number; inactiveCount?: number; warningCount?: number };
     };
     total = data.total ?? 0;
@@ -95,325 +102,137 @@ export default async function CompaniesPage(props: {
     "Linhas sem CNPJ são marcadas como inativas.";
 
   return (
-    <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1.06fr)_minmax(320px,0.54fr)] xl:items-start xl:gap-6">
-      <div className="animate-glass-rise space-y-6">
-        <PageHeader
-          kicker="Pesquisa e triagem"
-          title="Consulta avançada"
-          description="Busque por CNPJ, razão social, fantasia, código interno, município, regime ou status. A interface foi desenhada para reduzir a fricção na leitura da base."
-          actions={
-            <>
-              {session.role === "ADMIN" ? (
-                <Button asChild>
-                  <Link href="/companies/new">
-                    <PlusIcon className="size-4" />
-                    Cadastrar empresa
-                  </Link>
-                </Button>
-              ) : null}
-              <Button asChild variant="outline">
-                <Link href="/companies/contracts">Tabela Empresas</Link>
+    <div className="space-y-5">
+      <PageHeader
+        kicker="Pesquisa e triagem"
+        title="Consulta avançada"
+        description="Encontre empresas por identidade, localização ou situação e leve a mesma seleção para fora do sistema quando precisar trabalhar em conjunto."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {session.role === "ADMIN" ? (
+              <Button asChild>
+                <Link href="/companies/new">
+                  <PlusIcon className="size-4" />
+                  Cadastrar empresa
+                </Link>
               </Button>
-            </>
-          }
-        />
+            ) : null}
+            <Button asChild variant="outline">
+              <Link href="/companies/contracts">Tabela Empresas</Link>
+            </Button>
+          </div>
+        }
+      />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <CardDescription>Total da base</CardDescription>
-              <CardTitle>{totalCompaniesCount}</CardTitle>
+      <section aria-label="Resumo da base" className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric label="Total da base" value={totalCompaniesCount} detail="Ativas e inativas" />
+        <SummaryMetric label="Empresas ativas" value={activeCompaniesCount} detail="Operacionais" tone="positive" />
+        <SummaryMetric label="Empresas inativas" value={inactiveCompaniesCount} detail="Pedem revisão" tone="muted" />
+        <SummaryMetric label="Com aviso" value={warningCompaniesCount} detail="Sinais de importação" tone="warning" />
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
+        <div className="min-w-0 space-y-5">
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Filtros da consulta</CardTitle>
+                  <CardDescription className="mt-1">Combine texto, município e status para refinar a lista.</CardDescription>
+                </div>
+                <span className="group relative inline-flex">
+                  <button type="button" className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40" aria-label="Ver critérios de status">
+                    <CircleHelpIcon className="size-4" aria-hidden="true" />
+                  </button>
+                  <span className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-72 rounded-lg border border-border bg-popover px-3 py-2 text-xs leading-5 text-foreground opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                    <span className="block whitespace-pre-line">{criteriaTooltip}</span>
+                  </span>
+                </span>
+              </div>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Empresas ativas e inativas cadastradas no banco.
+            <CardContent className="pt-5">
+              <form className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(9rem,0.5fr)_minmax(8.5rem,0.38fr)_auto] md:items-end" action="/companies" method="get">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="q">Buscar por identidade</label>
+                  <Input id="q" name="q" defaultValue={q} placeholder="CNPJ, razão social, fantasia..." />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="municipio">Município</label>
+                  <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade ou UF" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="status">Status</label>
+                  <select id="status" name="status" defaultValue={status} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30">
+                    <option value="all">Todos</option>
+                    <option value="active">Ativas</option>
+                    <option value="inactive">Inativas</option>
+                  </select>
+                </div>
+                <Button type="submit" className="w-full md:w-auto"><SearchIcon className="size-4" />Buscar</Button>
+              </form>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardDescription>Empresas ativas</CardDescription>
-              <CardTitle>{activeCompaniesCount}</CardTitle>
+
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Resultados</CardTitle>
+                <CardDescription className="mt-1">{hasSearch ? `${total} registro${total === 1 ? "" : "s"} encontrado${total === 1 ? "" : "s"}.` : "Use os filtros acima para iniciar a consulta."}</CardDescription>
+              </div>
+              <CompanyExportButton q={q} municipio={municipio} status={status} disabled={!hasSearch || dataUnavailable} />
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Base considerada operacional para uso normal.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardDescription>Empresas inativas</CardDescription>
-              <CardTitle>{inactiveCompaniesCount}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Registros que pedem atenção ou revisão.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardDescription>Com aviso</CardDescription>
-              <CardTitle>{warningCompaniesCount}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Sinais importados com observações ou alerta.
+            <CardContent className="space-y-3 pt-5">
+              {hasSearch ? (
+                items.length ? items.map((company) => (
+                  <article key={company.id} className={cn("group rounded-lg border p-4 transition-colors hover:border-primary/40 hover:bg-muted/20", company.importWarning ? "border-amber-300/70 bg-amber-50/35" : "border-border/80 bg-background")}>
+                    <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_12rem_auto] md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-medium text-foreground">{company.razaoSocial || company.nomeFantasia || "(sem nome)"}</h3><Badge variant={company.ativo ? "secondary" : "outline"}>{company.ativo ? "Ativa" : "Inativa"}</Badge></div>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">{company.razaoSocial && company.nomeFantasia && company.razaoSocial !== company.nomeFantasia ? company.nomeFantasia : "Sem nome fantasia"}</p>
+                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{company.cnpjNumerico ? <span>CNPJ {formatCnpjDisplay(company.cnpjNumerico)}</span> : null}{company.codigoInterno ? <span>Código {company.codigoInterno}</span> : null}{company.municipio ? <span>{company.municipio}</span> : null}{company.regimeTributario ? <span>{company.regimeTributario}</span> : null}</div>
+                      </div>
+                      <div className="text-sm md:text-right">{company.importWarning ? <p className="font-medium text-amber-800">Aviso na importação</p> : <p className="text-muted-foreground">Dados consistentes</p>}<p className="mt-1 text-xs text-muted-foreground">{company.importWarning ? "Revisar antes de usar" : "Pronto para consulta"}</p></div>
+                      <Button asChild size="sm" variant="outline" className="w-full md:w-auto"><Link href={`/companies/${company.id}`}>Ver detalhes</Link></Button>
+                    </div>
+                  </article>
+                )) : <EmptyResults unavailable={dataUnavailable} />
+              ) : <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">Preencha a busca ou escolha um status para listar empresas.</div>}
+
+              {hasSearch ? <nav aria-label="Paginação de empresas" className="flex flex-wrap items-center justify-between gap-3 bg-muted/30 px-2 py-3 text-sm"><Link href={buildHref({ q, status, municipio, page: Math.max(1, page - 1) })} aria-disabled={page <= 1} className={cn("rounded-lg px-3 py-2 transition hover:bg-muted", page <= 1 && "pointer-events-none opacity-40")}>Anterior</Link><span className="text-muted-foreground">Página {page} de {totalPages} · {currentPageWarnings} aviso{currentPageWarnings === 1 ? "" : "s"} nesta página</span><Link href={buildHref({ q, status, municipio, page: Math.min(totalPages, page + 1) })} aria-disabled={page >= totalPages} className={cn("rounded-lg px-3 py-2 transition hover:bg-muted", page >= totalPages && "pointer-events-none opacity-40")}>Próxima</Link></nav> : null}
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Filtros
-              <span className="group relative inline-flex items-center">
-                <button
-                  type="button"
-                  className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40"
-                  aria-label="Ver critérios de status"
-                >
-                  <CircleHelpIcon className="size-4" aria-hidden="true" />
-                </button>
-                <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-2xl border border-border/70 bg-popover/96 px-3 py-2 text-xs leading-5 text-foreground opacity-0 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.4)] transition group-hover:opacity-100 group-focus-within:opacity-100">
-                  <span className="block whitespace-pre-line">{criteriaTooltip}</span>
-                </span>
-              </span>
-            </CardTitle>
-            <CardDescription>Combine texto livre, CNPJ parcial e status para refinar a lista.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              className="grid gap-3 md:grid-cols-[minmax(0,1.1fr)_180px_180px_auto] md:items-end xl:grid-cols-[minmax(0,1.25fr)_180px_180px_auto]"
-              action="/companies"
-              method="get"
-            >
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="q">
-                  Busca
-                </label>
-                <Input id="q" name="q" defaultValue={q} placeholder="CNPJ, razão social, fantasia..." />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="municipio">
-                  Município
-                </label>
-                <Input id="municipio" name="municipio" defaultValue={municipio} placeholder="Cidade/UF" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="status">
-                  Status
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue={status}
-                  className="h-10 w-full rounded-xl border border-input/80 bg-background/70 px-3 text-sm shadow-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
-                >
-                  <option value="all">Todos</option>
-                  <option value="active">Ativas</option>
-                  <option value="inactive">Inativas</option>
-                </select>
-              </div>
-              <Button type="submit" className="w-full md:w-auto">
-                <SearchIcon className="size-4" />
-                Buscar
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resultados</CardTitle>
-            <CardDescription>
-              {hasSearch ? (
-                <>
-                  {total} registro{total === 1 ? "" : "s"} encontrado{total === 1 ? "" : "s"}.
-                </>
-              ) : (
-                <>Use os filtros acima para pesquisar empresas.</>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {hasSearch ? (
-              items.length ? (
-                items.map((c, index) => (
-                  <div
-                    key={c.id}
-                    className={cn(
-                      "flex flex-col gap-4 rounded-[1.35rem] border p-4 shadow-sm transition md:hover:-translate-y-0.5 md:hover:shadow-md xl:grid xl:grid-cols-[minmax(0,1.25fr)_minmax(220px,0.62fr)_auto] xl:items-center",
-                      c.importWarning
-                        ? "border-amber-200/80 bg-amber-50/55"
-                        : "border-border/70 bg-background/60",
-                      index === 0 && "ring-1 ring-sky-200/70"
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="truncate font-medium text-foreground">
-                          {c.razaoSocial || c.nomeFantasia || "(sem nome)"}
-                        </div>
-                        <Badge variant={c.ativo ? "secondary" : "outline"}>
-                          {c.ativo ? "Ativa" : "Inativa"}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {c.razaoSocial && c.nomeFantasia && c.razaoSocial !== c.nomeFantasia
-                          ? c.nomeFantasia
-                          : "Sem nome fantasia"}
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[0.72rem] text-muted-foreground">
-                        {c.cnpjNumerico ? (
-                          <span className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1">
-                            CNPJ {formatCnpjDisplay(c.cnpjNumerico)}
-                          </span>
-                        ) : null}
-                        {c.codigoInterno ? (
-                          <span className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1">
-                            Cód {c.codigoInterno}
-                          </span>
-                        ) : null}
-                        {c.municipio ? (
-                          <span className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1">
-                            {c.municipio}
-                          </span>
-                        ) : null}
-                        {c.regimeTributario ? (
-                          <span className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1">
-                            Tipo de tributação {c.regimeTributario}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                      {c.importWarning ? <Badge variant="outline">Aviso na importação</Badge> : null}
-                      <div className="text-xs text-muted-foreground xl:max-w-40 xl:text-right">
-                        {c.importWarning ? "Rever dados marcados na importação." : "Leitura normal da base."}
-                      </div>
-                    </div>
-
-                    <Button asChild size="sm" variant="outline" className="w-full xl:w-auto">
-                      <Link href={`/companies/${c.id}`}>Detalhes</Link>
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-[1.25rem] border border-dashed border-border/70 bg-background/50 p-6 text-sm text-muted-foreground">
-                  {dataUnavailable
-                    ? "Base temporariamente indisponível. Tente novamente em instantes."
-                    : "Nenhum registro encontrado."}
-                </div>
-              )
-            ) : (
-              <div className="rounded-[1.25rem] border border-dashed border-border/70 bg-background/50 p-6 text-sm text-muted-foreground">
-                {dataUnavailable
-                  ? "Base temporariamente indisponível. Você ainda pode usar os atalhos laterais."
-                  : "Preencha a busca ou escolha um status para listar empresas."}
-              </div>
-            )}
-
-            {hasSearch ? (
-              <div className="flex items-center justify-between pt-2 text-sm">
-                <Link
-                  href={buildHref({ q, status, municipio, page: Math.max(1, page - 1) })}
-                  aria-disabled={page <= 1}
-                  className={
-                    page <= 1
-                      ? "pointer-events-none inline-flex items-center justify-center rounded-xl px-3 py-2 text-muted-foreground opacity-40"
-                      : "inline-flex items-center justify-center rounded-xl px-3 py-2 text-foreground transition hover:bg-muted/70"
-                  }
-                >
-                  Anterior
-                </Link>
-                <div className="text-muted-foreground">
-                  Página {page} de {totalPages}
-                </div>
-                <Link
-                  href={buildHref({ q, status, municipio, page: Math.min(totalPages, page + 1) })}
-                  aria-disabled={page >= totalPages}
-                  className={
-                    page >= totalPages
-                      ? "pointer-events-none inline-flex items-center justify-center rounded-xl px-3 py-2 text-muted-foreground opacity-40"
-                      : "inline-flex items-center justify-center rounded-xl px-3 py-2 text-foreground transition hover:bg-muted/70"
-                  }
-                >
-                  Próxima
-                </Link>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
+        <aside className="space-y-5 xl:sticky xl:top-5">
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2"><CardTitle>Leitura rápida</CardTitle><CardDescription className="mt-1">O estado da seleção atual.</CardDescription></CardHeader>
+            <CardContent className="space-y-4 pt-5 text-sm">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4"><SummaryPair label="Status" value={status === "all" ? "Todas" : status === "active" ? "Ativas" : "Inativas"} /><SummaryPair label="Resultados" value={hasSearch ? String(total) : "—"} /><SummaryPair label="Página" value={hasSearch ? `${page} / ${totalPages}` : "—"} /><SummaryPair label="Avisos" value={hasSearch ? String(currentPageWarnings) : "—"} /></dl>
+              <div className="rounded-lg bg-muted/50 p-4 text-muted-foreground"><p className="font-medium text-foreground">Critérios de status</p><p className="mt-2 whitespace-pre-line text-xs leading-5">{criteriaTooltip}</p></div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2"><CardTitle>Ações diretas</CardTitle></CardHeader>
+            <CardContent className="space-y-2 pt-5">{session.role === "ADMIN" ? <QuickLink href="/import" label="Importar planilha" icon={<PlusIcon className="size-4" />} /> : null}<QuickLink href="/import/history" label="Ver histórico" icon={<SearchIcon className="size-4" />} /><QuickLink href="/companies/contracts" label="Tabela Empresas" icon={<DownloadIcon className="size-4" />} /><QuickLink href="/dashboard" label="Painel principal" icon={<CircleHelpIcon className="size-4" />} /></CardContent>
+          </Card>
+        </aside>
       </div>
-
-      <aside className="animate-glass-rise space-y-6 xl:sticky xl:top-6 [animation-delay:120ms]">
-        <Card>
-          <CardHeader>
-            <CardDescription>Leitura rápida</CardDescription>
-            <CardTitle>Resumo da busca</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[1rem] border border-border/70 bg-background/60 p-3">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-muted-foreground">Status</div>
-                <div className="mt-1 font-medium text-foreground">
-                  {status === "all" ? "Todas" : status === "active" ? "Ativas" : "Inativas"}
-                </div>
-              </div>
-              <div className="rounded-[1rem] border border-border/70 bg-background/60 p-3">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-muted-foreground">Resultados</div>
-                <div className="mt-1 font-medium text-foreground">{hasSearch ? total : 0}</div>
-              </div>
-              <div className="rounded-[1rem] border border-border/70 bg-background/60 p-3">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-muted-foreground">Página</div>
-                <div className="mt-1 font-medium text-foreground">
-                  {hasSearch ? `${page} / ${totalPages}` : "—"}
-                </div>
-              </div>
-              <div className="rounded-[1rem] border border-border/70 bg-background/60 p-3">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-muted-foreground">Avisos</div>
-                <div className="mt-1 font-medium text-foreground">{currentPageWarnings}</div>
-              </div>
-            </div>
-
-            <div className="rounded-[1.1rem] border border-dashed border-border/70 bg-background/50 p-4 text-muted-foreground">
-              <p className="text-xs uppercase tracking-[0.28em]">Critérios</p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-6">{criteriaTooltip}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardDescription>Atalhos</CardDescription>
-            <CardTitle>Ações diretas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {session.role === "ADMIN" ? (
-              <Button asChild variant="outline" className="w-full justify-between">
-                <Link href="/import">
-                  Importar planilha
-                  <PlusIcon className="size-4" />
-                </Link>
-              </Button>
-            ) : null}
-            <Button asChild variant="outline" className="w-full justify-between">
-              <Link href="/import/history">
-                Ver histórico
-                <SearchIcon className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-between">
-              <Link href="/companies/contracts">
-                Tabela Empresas
-                <SearchIcon className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-between">
-              <Link href="/dashboard">
-                Painel principal
-                <CircleHelpIcon className="size-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </aside>
     </div>
   );
+}
+
+function SummaryMetric(props: { label: string; value: number; detail: string; tone?: "positive" | "muted" | "warning" }) {
+  return <div className="bg-card px-4 py-4 sm:px-5"><p className="text-xs font-medium text-muted-foreground">{props.label}</p><p className={cn("mt-2 text-2xl font-semibold tracking-tight", props.tone === "positive" && "text-emerald-700", props.tone === "warning" && "text-amber-700")}>{props.value.toLocaleString("pt-BR")}</p><p className="mt-1 text-xs text-muted-foreground">{props.detail}</p></div>;
+}
+
+function SummaryPair(props: { label: string; value: string }) {
+  return <div><dt className="text-xs text-muted-foreground">{props.label}</dt><dd className="mt-1 font-medium text-foreground">{props.value}</dd></div>;
+}
+
+function QuickLink(props: { href: string; label: string; icon: React.ReactNode }) {
+  return <Button asChild variant="ghost" className="w-full justify-between rounded-lg px-3"><Link href={props.href}>{props.label}{props.icon}</Link></Button>;
+}
+
+function EmptyResults(props: { unavailable: boolean }) {
+  return <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">{props.unavailable ? "A base está temporariamente indisponível. Tente novamente em instantes." : "Nenhum registro encontrado para estes filtros."}</div>;
 }
