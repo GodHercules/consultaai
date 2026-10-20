@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DownloadIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatCnpjDisplay } from "@/utils/cnpj";
 
 type SearchStatus = "all" | "active" | "inactive";
 type CompanyExportItem = {
@@ -61,7 +62,7 @@ export function CompanyExportButton(props: { q: string; municipio: string; statu
       }
 
       const headers = ["ID", "Código interno", "Razão social", "Nome fantasia", "CNPJ", "Município", "Regime tributário", "Sistema", "Certificado", "Status", "Observação", "Aviso de importação"];
-      const rows = allItems.map((item) => [item.id, item.codigoInterno, item.razaoSocial, item.nomeFantasia, item.cnpjNumerico, item.municipio, item.regimeTributario, item.sistema, item.certificado, item.ativo ? "Ativa" : "Inativa", item.observacao, item.importWarning].map(csvCell).join(";"));
+      const rows = allItems.map((item) => [item.id, item.codigoInterno, item.razaoSocial, item.nomeFantasia, formatCnpjDisplay(item.cnpjNumerico), item.municipio, item.regimeTributario, item.sistema, item.certificado, item.ativo ? "Ativa" : "Inativa", item.observacao, item.importWarning].map(csvCell).join(";"));
       const csv = `\uFEFF${headers.map(csvCell).join(";")}\n${rows.join("\n")}`;
       const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
       const link = document.createElement("a");
